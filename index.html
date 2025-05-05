@@ -6,6 +6,7 @@
     <title>Jogo da Velha</title>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
+        /* Estilos base */
         * {
             margin: 0;
             padding: 0;
@@ -18,12 +19,71 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            color: #fff;
-            overflow-x: hidden;
+            color: #000; /* Padrão para modo claro */
+            transition: color 0.3s, background 0.3s;
         }
+
+        /* Detecção de tema */
+        @media (prefers-color-scheme: dark) {
+            body {
+                color: #fff; /* Texto branco em modo escuro */
+            }
+            .container, #status, #scores, .modal-content, .game-over-content {
+                background: rgba(0, 0, 0, 0.2); /* Ajuste de fundo para escuro */
+            }
+            .cell {
+                background: #333; /* Células escuras */
+                color: #fff; /* Texto branco nas células */
+            }
+            .cell:hover {
+                background: #444; /* Hover em modo escuro */
+            }
+            .hamburger {
+                color: #ccc; /* Ajuste do ícone hambúrguer */
+            }
+            .sidebar {
+                background: #1a252f; /* Sidebar mais escura */
+            }
+            .sidebar a:hover {
+                background: #2a3d50; /* Hover da sidebar em escuro */
+            }
+            .score-card {
+                background: linear-gradient(45deg, #2a609f, #6a0fbd); /* Ajuste de gradiente */
+                color: #ddd; /* Texto mais claro */
+            }
+        }
+
+        @media (prefers-color-scheme: light) {
+            body {
+                color: #000; /* Texto preto em modo claro */
+            }
+            .container, #status, #scores, .modal-content, .game-over-content {
+                background: rgba(255, 255, 255, 0.3); /* Fundo claro */
+            }
+            .cell {
+                background: #fff; /* Células claras */
+                color: #000; /* Texto preto nas células */
+            }
+            .cell:hover {
+                background: #f0f0f0; /* Hover em modo claro */
+            }
+            .hamburger {
+                color: #333; /* Ajuste do ícone hambúrguer */
+            }
+            .sidebar {
+                background: #e0e0e0; /* Sidebar clara */
+            }
+            .sidebar a:hover {
+                background: #d0d0d0; /* Hover da sidebar em claro */
+            }
+            .score-card {
+                background: linear-gradient(45deg, #4a90e2, #9013fe); /* Gradiente original */
+                color: #fff; /* Texto branco */
+            }
+        }
+
         .container {
             text-align: center;
-            background: rgba(255, 255, 255, 0.1);
             padding: 20px;
             border-radius: 15px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
@@ -52,7 +112,6 @@
         .cell {
             width: 100px;
             height: 100px;
-            background: #fff;
             border-radius: 10px;
             font-size: 60px;
             display: flex;
@@ -64,7 +123,6 @@
         }
         .cell:hover {
             transform: scale(1.05);
-            background: #e0e0e0;
         }
         .cell:active {
             transform: scale(0.95);
@@ -76,7 +134,6 @@
             font-size: 30px;
             cursor: pointer;
             z-index: 2000;
-            color: #fff;
             transition: transform 0.3s;
         }
         .hamburger:hover {
@@ -88,8 +145,6 @@
             left: -250px;
             width: 250px;
             height: 100%;
-            background: #2c3e50;
-            color: #fff;
             transition: left 0.3s ease-in-out;
             z-index: 2000;
             padding: 20px;
@@ -99,7 +154,7 @@
         }
         .sidebar a {
             display: block;
-            color: #fff;
+            color: inherit; /* Herda a cor do body */
             padding: 15px;
             text-decoration: none;
             font-size: 1.1em;
@@ -108,7 +163,7 @@
             transition: background 0.2s;
         }
         .sidebar a:hover {
-            background: #34495e;
+            background: rgba(0, 0, 0, 0.1); /* Ajuste leve */
         }
         .modal {
             display: none;
@@ -123,7 +178,6 @@
             align-items: center;
         }
         .modal-content {
-            background: #fff;
             padding: 30px;
             border-radius: 15px;
             max-width: 500px;
@@ -156,19 +210,17 @@
             right: 20px;
             font-size: 25px;
             cursor: pointer;
-            color: #333;
+            color: inherit; /* Herda a cor do body */
         }
         #status {
             margin: 20px 0;
             font-size: 1.1em;
-            background: rgba(255, 255, 255, 0.2);
             padding: 10px;
             border-radius: 5px;
         }
         #scores {
             margin: 20px 0;
             font-size: 1em;
-            background: rgba(255, 255, 255, 0.15);
             padding: 15px;
             border-radius: 10px;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
@@ -184,13 +236,11 @@
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
         }
         .score-card {
-            background: linear-gradient(45deg, #4a90e2, #9013fe);
             padding: 10px;
             border-radius: 8px;
             margin: 5px 0;
             display: flex;
             justify-content: space-between;
-            color: #fff;
             font-weight: bold;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
             transition: transform 0.2s;
@@ -219,7 +269,6 @@
             animation: fadeIn 0.3s ease-in;
         }
         .game-over-content {
-            background: #fff;
             padding: 20px;
             border-radius: 10px;
             text-align: center;
@@ -229,7 +278,7 @@
         }
         .game-over-content p {
             font-size: 1.5em;
-            color: #333;
+            color: inherit; /* Herda a cor do body */
             margin-bottom: 20px;
         }
         .game-over-content button {
