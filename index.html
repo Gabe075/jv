@@ -367,7 +367,7 @@
     </div>
 
     <script>
-        const socket = io('https://localhost:10000', { transports: ['websocket'], reconnectionAttempts: 3 });
+        const socket = io('https://localhost10000', { transports: ['websocket'], reconnectionAttempts: 3 });
         const gameState = {
             board: Array(9).fill(null),
             currentPlayer: '❌',
