@@ -592,6 +592,7 @@
             : gameState.difficulty
             ? `Jogador atual: ${gameState.currentPlayer} (Dificuldade: ${gameState.difficulty})`
             : 'Escolha um modo de jogo...';
+        console.log(`Tabuleiro atualizado - isGameActive: ${gameState.isGameActive}, gameOver: ${gameState.gameOver}, currentPlayer: ${gameState.currentPlayer}`);
     }
 
     function updateScores() {
@@ -863,7 +864,7 @@
         gameState.roomId = roomId;
         gameState.board = Array(9).fill(null);
         gameState.gameOver = false;
-        gameState.isGameActive = false; // Ativado no playerJoined
+        gameState.isGameActive = false;
         document.getElementById('roomIdDisplay').innerText = `ID da Sala: ${roomId} (Copie e envie ao seu amigo)`;
         document.getElementById('status').textContent = `Aguardando segundo jogador na sala ${roomId}...`;
         document.getElementById('chatButton').style.display = 'block';
@@ -883,7 +884,7 @@
         gameState.isLocal = false;
         gameState.difficulty = null;
         gameState.roomId = roomId;
-        gameState.isGameActive = false; // Ativado no playerJoined
+        gameState.isGameActive = false;
         socket.emit('joinRoom', roomId);
         document.getElementById('status').textContent = `Conectando à sala ${roomId}...`;
         document.getElementById('chatButton').style.display = 'block';
@@ -940,9 +941,9 @@
         gameState.currentPlayer = data.firstPlayer;
         gameState.board = Array(9).fill(null);
         gameState.gameOver = false;
-        gameState.isGameActive = false; // Ativado no playerJoined
+        gameState.isGameActive = false;
         updateBoard();
-        hideGameOver(); // Garante que o game-over não esteja visível
+        hideGameOver();
     });
 
     socket.on('playerJoined', (data) => {
@@ -952,9 +953,9 @@
         gameState.currentPlayer = data.firstPlayer;
         gameState.board = Array(9).fill(null);
         gameState.gameOver = false;
-        gameState.isGameActive = true; // Jogo ativo após o segundo jogador entrar
+        gameState.isGameActive = true; // Ativa o jogo quando o segundo jogador entra
         updateBoard();
-        hideGameOver(); // Garante que o game-over não esteja visível
+        hideGameOver();
     });
 
     socket.on('gameState', (state) => {
@@ -962,9 +963,10 @@
         gameState.board = state.board;
         gameState.currentPlayer = state.currentPlayer;
         gameState.gameOver = state.gameOver;
+        gameState.isGameActive = !state.gameOver; // Ativa o jogo se não estiver terminado
         updateBoard();
         if (!gameState.gameOver) {
-            hideGameOver(); // Garante que o game-over seja escondido
+            hideGameOver();
         }
     });
 
@@ -1044,6 +1046,6 @@
 
     updateBoard();
     updateScores();
-    </script>
+            </script>
 </body>
 </html>
