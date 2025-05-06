@@ -48,6 +48,13 @@
                 background: linear-gradient(45deg, #2a609f, #6a0fbd);
                 color: #ddd;
             }
+            .results-button {
+                background: #6e8efb;
+                color: #fff;
+            }
+            .results-button:hover {
+                background: #a777e3;
+            }
         }
         @media (prefers-color-scheme: light) {
             body {
@@ -75,6 +82,13 @@
             .score-card, .chat-message {
                 background: linear-gradient(45deg, #4a90e2, #9013fe);
                 color: #fff;
+            }
+            .results-button {
+                background: #6e8efb;
+                color: #fff;
+            }
+            .results-button:hover {
+                background: #a777e3;
             }
         }
         .container {
@@ -214,6 +228,19 @@
             padding: 10px;
             border-radius: 5px;
         }
+        .results-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+            margin: 20px auto;
+            display: block;
+        }
+        .results-button:hover {
+            transform: scale(1.05);
+        }
         .chat-container {
             position: fixed;
             bottom: 20px;
@@ -349,7 +376,6 @@
         <a onclick="openModal('emojiModal')">😎 Escolher Emojis</a>
         <a onclick="openModal('onlineModal')">🌐 Modo Online</a>
         <a onclick="openModal('localModal')">🎮 Modo Local</a>
-        <a onclick="openModal('scoresModal')">🏆 Ver Resultados</a>
         <a onclick="openModal('achievementsModal')">🌟 Ver Conquistas</a>
     </div>
 
@@ -367,6 +393,7 @@
             <div class="cell" data-index="7"></div>
             <div class="cell" data-index="8"></div>
         </div>
+        <button class="results-button" onclick="openModal('scoresModal')">🏆 Ver Resultados</button>
         <div id="game-over">
             <div class="game-over-content">
                 <p id="game-over-message"></p>
