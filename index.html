@@ -894,23 +894,23 @@
             alert('Erro de conexão: ' + error.message);
         });
 
-        socket.on('roomCreated', (data) => {
-            gameState.playerSymbol = data.playerSymbol;
-            gameState.aiSymbol = data.aiSymbol;
-            gameState.currentPlayer = data.firstPlayer;
-            gameState.board = Array(9).fill(null);
-            updateBoard();
-        });
+socket.on('roomCreated', (data) => {
+    gameState.playerSymbol = data.playerSymbol;
+    gameState.aiSymbol = data.aiSymbol;
+    gameState.currentPlayer = data.firstPlayer;
+    gameState.board = Array(9).fill(null);
+    updateBoard();
+});
 
-        socket.on('playerJoined', (data) => {
-            gameState.playerSymbol = data.playerSymbol;
-            gameState.aiSymbol = data.aiSymbol;
-            gameState.currentPlayer = data.firstPlayer;
-            gameState.board = Array(9).fill(null);
-            gameState.gameOver = false;
-            updateBoard();
-            document.getElementById('status').textContent = `Jogador atual: ${gameState.currentPlayer} (Sala: ${gameState.roomId})`;
-        });
+socket.on('playerJoined', (data) => {
+    gameState.playerSymbol = data.playerSymbol;
+    gameState.aiSymbol = data.aiSymbol;
+    gameState.currentPlayer = data.firstPlayer;
+    gameState.board = Array(9).fill(null);
+    gameState.gameOver = false;
+    updateBoard();
+    document.getElementById('status').textContent = `Jogador atual: ${gameState.currentPlayer} (Sala: ${gameState.roomId})`;
+});
 
         socket.on('gameState', (state) => {
             gameState.board = state.board;
