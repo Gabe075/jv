@@ -556,7 +556,9 @@
             opt.textContent = option;
             chatSelect.appendChild(opt);
         });
-    } catch (error) {}
+    } catch (error) {
+        console.error('Erro na inicialização:', error);
+    }
 
     function openModal(modalId) {
         document.getElementById(modalId).style.display = 'flex';
@@ -626,11 +628,15 @@
     }
 
     function handleCellClick(index) {
-        if (gameState.gameOver || gameState.board[index] || (!gameState.isOnline && !gameState.isLocal && !gameState.difficulty)) return;
+        console.log(`Tentativa de jogada em ${index}, currentPlayer: ${gameState.currentPlayer}, playerSymbol: ${gameState.playerSymbol}, isOnline: ${gameState.isOnline}, gameOver: ${gameState.gameOver}, board[${index}]: ${gameState.board[index]}`);
+        if (gameState.gameOver || (gameState.isOnline && gameState.board[index]) || (!gameState.isOnline && !gameState.isLocal && !gameState.difficulty)) return;
 
         if (gameState.isOnline) {
             if (gameState.currentPlayer === gameState.playerSymbol && !gameState.board[index]) {
+                console.log(`Enviando jogada para o servidor: ${index}`);
                 socket.emit('makeMove', { roomId: gameState.roomId, index, symbol: gameState.playerSymbol });
+            } else {
+                console.log(`Jogada bloqueada: Não é a vez ou célula ocupada`);
             }
             return;
         }
@@ -887,15 +893,18 @@
     }
 
     socket.on('connect', () => {
+        console.log('Conectado ao servidor');
         document.getElementById('status').textContent = 'Conectado! Escolha um modo de jogo.';
     });
 
     socket.on('connect_error', (error) => {
+        console.error('Erro de conexão:', error.message);
         document.getElementById('status').textContent = 'Erro ao conectar ao servidor. Verifique o URL ou o servidor.';
         alert('Erro de conexão: ' + error.message);
     });
 
     socket.on('roomCreated', (data) => {
+        console.log('Sala criada, dados:', data);
         gameState.playerSymbol = data.playerSymbol;
         gameState.aiSymbol = data.aiSymbol;
         gameState.currentPlayer = data.firstPlayer;
@@ -905,6 +914,7 @@
     });
 
     socket.on('playerJoined', (data) => {
+        console.log('Jogador entrou, dados:', data);
         gameState.playerSymbol = data.playerSymbol;
         gameState.aiSymbol = data.aiSymbol;
         gameState.currentPlayer = data.firstPlayer;
@@ -914,6 +924,7 @@
     });
 
     socket.on('gameState', (state) => {
+        console.log('Estado do jogo atualizado:', state);
         gameState.board = state.board;
         gameState.currentPlayer = state.currentPlayer; // Sempre atualizar o currentPlayer do servidor
         gameState.gameOver = state.gameOver;
@@ -924,6 +935,7 @@
     });
 
     socket.on('gameOver', (result) => {
+        console.log('Partida terminada, resultado:', result);
         if (result.winner) {
             const isWinner = result.winner === gameState.playerSymbol;
             showGameOver(isWinner ? 'Você venceu!' : 'Você perdeu!');
@@ -937,6 +949,7 @@
     });
 
     socket.on('resetGame', (data) => {
+        console.log('Partida reiniciada, dados:', data);
         gameState.board = Array(9).fill(null);
         gameState.currentPlayer = data.firstPlayer;
         gameState.gameOver = false;
@@ -955,10 +968,12 @@
     });
 
     socket.on('statusUpdate', (message) => {
+        console.log('Status atualizado:', message);
         document.getElementById('status').textContent = message;
     });
 
     socket.on('error', (message) => {
+        console.error('Erro recebido:', message);
         alert(message);
         gameState.isOnline = false;
         gameState.roomId = null;
@@ -972,6 +987,7 @@
     });
 
     socket.on('disconnect', () => {
+        console.log('Desconectado do servidor');
         if (gameState.isOnline) {
             alert('Desconectado do servidor. Verifique sua conexão.');
             gameState.isOnline = false;
@@ -988,6 +1004,6 @@
 
     updateBoard();
     updateScores();
-        </script>                                           
+  </script>
 </body>
 </html>
