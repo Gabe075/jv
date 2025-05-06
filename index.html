@@ -498,12 +498,12 @@
         currentPlayer: '❌',
         playerSymbol: '❌',
         aiSymbol: '⭕',
-        difficulty: null, // Inicialmente null, só será definido no modo IA
+        difficulty: null,
         gameOver: false,
         isOnline: false,
         isLocal: false,
         roomId: null,
-        isGameActive: false, // Nova variável para controlar se o jogo está ativo
+        isGameActive: false,
         scores: {
             easy: { player: 0, ai: 0, ties: 0 },
             medium: { player: 0, ai: 0, ties: 0 },
@@ -541,6 +541,7 @@
                 e.preventDefault();
                 handleCellClick(cell.dataset.index);
             });
+            console.log(`Evento adicionado à célula ${cell.dataset.index}`);
         });
 
         document.querySelectorAll('.close').forEach(closeBtn => {
@@ -632,7 +633,7 @@
     function handleCellClick(index) {
         console.log(`Tentativa de jogada em ${index}, currentPlayer: ${gameState.currentPlayer}, playerSymbol: ${gameState.playerSymbol}, isOnline: ${gameState.isOnline}, isGameActive: ${gameState.isGameActive}, gameOver: ${gameState.gameOver}, board[${index}]: ${gameState.board[index]}`);
 
-        // Bloqueia cliques se o jogo estiver terminado ou não estiver ativo
+        // Bloqueia cliques se o jogo estiver terminado ou não ativo
         if (gameState.gameOver || !gameState.isGameActive) {
             console.log('Jogada bloqueada: Jogo terminado ou não ativo');
             return;
@@ -640,11 +641,11 @@
 
         // Modo online
         if (gameState.isOnline) {
-            if (gameState.currentPlayer === gameState.playerSymbol && !gameState.board[index]) {
+            if (!gameState.board[index]) {
                 console.log(`Enviando jogada para o servidor: sala ${gameState.roomId}, índice ${index}, símbolo ${gameState.playerSymbol}`);
                 socket.emit('makeMove', { roomId: gameState.roomId, index, symbol: gameState.playerSymbol });
             } else {
-                console.log(`Jogada bloqueada: Não é sua vez ou célula ocupada`);
+                console.log(`Jogada bloqueada: Célula ocupada`);
             }
             return;
         }
@@ -862,7 +863,7 @@
         gameState.roomId = roomId;
         gameState.board = Array(9).fill(null);
         gameState.gameOver = false;
-        gameState.isGameActive = false; // Só ativa quando o segundo jogador entrar
+        gameState.isGameActive = false; // Ativado no playerJoined
         document.getElementById('roomIdDisplay').innerText = `ID da Sala: ${roomId} (Copie e envie ao seu amigo)`;
         document.getElementById('status').textContent = `Aguardando segundo jogador na sala ${roomId}...`;
         document.getElementById('chatButton').style.display = 'block';
@@ -882,7 +883,7 @@
         gameState.isLocal = false;
         gameState.difficulty = null;
         gameState.roomId = roomId;
-        gameState.isGameActive = false; // Será ativado no evento playerJoined
+        gameState.isGameActive = false; // Ativado no playerJoined
         socket.emit('joinRoom', roomId);
         document.getElementById('status').textContent = `Conectando à sala ${roomId}...`;
         document.getElementById('chatButton').style.display = 'block';
@@ -939,8 +940,9 @@
         gameState.currentPlayer = data.firstPlayer;
         gameState.board = Array(9).fill(null);
         gameState.gameOver = false;
-        gameState.isGameActive = false; // Ainda esperando o segundo jogador
+        gameState.isGameActive = false; // Ativado no playerJoined
         updateBoard();
+        hideGameOver(); // Garante que o game-over não esteja visível
     });
 
     socket.on('playerJoined', (data) => {
@@ -950,8 +952,9 @@
         gameState.currentPlayer = data.firstPlayer;
         gameState.board = Array(9).fill(null);
         gameState.gameOver = false;
-        gameState.isGameActive = true; // Jogo agora está ativo
+        gameState.isGameActive = true; // Jogo ativo após o segundo jogador entrar
         updateBoard();
+        hideGameOver(); // Garante que o game-over não esteja visível
     });
 
     socket.on('gameState', (state) => {
@@ -961,7 +964,7 @@
         gameState.gameOver = state.gameOver;
         updateBoard();
         if (!gameState.gameOver) {
-            hideGameOver();
+            hideGameOver(); // Garante que o game-over seja escondido
         }
     });
 
@@ -1041,6 +1044,6 @@
 
     updateBoard();
     updateScores();
-                                        </script>
+    </script>
 </body>
 </html>
