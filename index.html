@@ -486,8 +486,7 @@
 
     <script src="chatOptions.js"></script>
 
-    <!-- Mantém o HTML anterior, mas atualiza o script -->
-<script>
+    <script>
     const socket = io('https://jdv-vol1.onrender.com', { 
         transports: ['websocket'], 
         reconnectionAttempts: 5,
@@ -499,11 +498,12 @@
         currentPlayer: '❌',
         playerSymbol: '❌',
         aiSymbol: '⭕',
-        difficulty: 'hard',
+        difficulty: null, // Inicialmente null, só será definido no modo IA
         gameOver: false,
         isOnline: false,
         isLocal: false,
         roomId: null,
+        isGameActive: false, // Nova variável para controlar se o jogo está ativo
         scores: {
             easy: { player: 0, ai: 0, ties: 0 },
             medium: { player: 0, ai: 0, ties: 0 },
@@ -588,7 +588,9 @@
                 : 'Aguardando conexão...'
             : gameState.isLocal
             ? `Jogador atual: ${gameState.currentPlayer === gameState.playerSymbol ? 'Jogador 1' : 'Jogador 2'}`
-            : `Jogador atual: ${gameState.currentPlayer} (Dificuldade: ${gameState.difficulty})`;
+            : gameState.difficulty
+            ? `Jogador atual: ${gameState.currentPlayer} (Dificuldade: ${gameState.difficulty})`
+            : 'Escolha um modo de jogo...';
     }
 
     function updateScores() {
@@ -628,60 +630,76 @@
     }
 
     function handleCellClick(index) {
-        console.log(`Tentativa de jogada em ${index}, currentPlayer: ${gameState.currentPlayer}, playerSymbol: ${gameState.playerSymbol}, isOnline: ${gameState.isOnline}, gameOver: ${gameState.gameOver}, board[${index}]: ${gameState.board[index]}`);
-        if (gameState.gameOver || (gameState.isOnline && gameState.board[index]) || (!gameState.isOnline && !gameState.isLocal && !gameState.difficulty)) return;
+        console.log(`Tentativa de jogada em ${index}, currentPlayer: ${gameState.currentPlayer}, playerSymbol: ${gameState.playerSymbol}, isOnline: ${gameState.isOnline}, isGameActive: ${gameState.isGameActive}, gameOver: ${gameState.gameOver}, board[${index}]: ${gameState.board[index]}`);
 
+        // Bloqueia cliques se o jogo estiver terminado ou não estiver ativo
+        if (gameState.gameOver || !gameState.isGameActive) {
+            console.log('Jogada bloqueada: Jogo terminado ou não ativo');
+            return;
+        }
+
+        // Modo online
         if (gameState.isOnline) {
             if (gameState.currentPlayer === gameState.playerSymbol && !gameState.board[index]) {
-                console.log(`Enviando jogada para o servidor: ${index}`);
+                console.log(`Enviando jogada para o servidor: sala ${gameState.roomId}, índice ${index}, símbolo ${gameState.playerSymbol}`);
                 socket.emit('makeMove', { roomId: gameState.roomId, index, symbol: gameState.playerSymbol });
             } else {
-                console.log(`Jogada bloqueada: Não é a vez ou célula ocupada`);
+                console.log(`Jogada bloqueada: Não é sua vez ou célula ocupada`);
             }
             return;
         }
 
+        // Modo local (2 jogadores)
         if (gameState.isLocal) {
-            gameState.board[index] = gameState.currentPlayer;
-            const result = checkWinner(gameState.board);
-            if (result.winner) {
-                showGameOver(`Jogador ${gameState.currentPlayer === gameState.playerSymbol ? '1' : '2'} venceu!`);
-                gameState.scores.local[gameState.currentPlayer === gameState.playerSymbol ? 'player1' : 'player2']++;
-                gameState.gameOver = true;
-            } else if (result.isTie) {
-                showGameOver('Empate!');
-                gameState.scores.local.ties++;
-                gameState.gameOver = true;
-            } else {
-                gameState.currentPlayer = gameState.currentPlayer === gameState.playerSymbol ? gameState.aiSymbol : gameState.playerSymbol;
+            if (!gameState.board[index]) {
+                gameState.board[index] = gameState.currentPlayer;
+                const result = checkWinner(gameState.board);
+                if (result.winner) {
+                    showGameOver(`Jogador ${gameState.currentPlayer === gameState.playerSymbol ? '1' : '2'} venceu!`);
+                    gameState.scores.local[gameState.currentPlayer === gameState.playerSymbol ? 'player1' : 'player2']++;
+                    gameState.gameOver = true;
+                    gameState.isGameActive = false;
+                } else if (result.isTie) {
+                    showGameOver('Empate!');
+                    gameState.scores.local.ties++;
+                    gameState.gameOver = true;
+                    gameState.isGameActive = false;
+                } else {
+                    gameState.currentPlayer = gameState.currentPlayer === gameState.playerSymbol ? gameState.aiSymbol : gameState.playerSymbol;
+                }
+                updateBoard();
+                updateScores();
             }
-            updateBoard();
-            updateScores();
             return;
         }
 
-        if (gameState.currentPlayer === gameState.playerSymbol) {
-            gameState.board[index] = gameState.playerSymbol;
-            const result = checkWinner(gameState.board);
-            if (result.winner) {
-                showGameOver('Você venceu!');
-                gameState.scores[gameState.difficulty].player++;
-                gameState.gameOver = true;
-            } else if (result.isTie) {
-                showGameOver('Empate!');
-                gameState.scores[gameState.difficulty].ties++;
-                gameState.gameOver = true;
-            } else {
-                gameState.currentPlayer = gameState.aiSymbol;
-                setTimeout(aiMove, 500);
+        // Modo IA
+        if (gameState.difficulty && gameState.currentPlayer === gameState.playerSymbol) {
+            if (!gameState.board[index]) {
+                gameState.board[index] = gameState.playerSymbol;
+                const result = checkWinner(gameState.board);
+                if (result.winner) {
+                    showGameOver('Você venceu!');
+                    gameState.scores[gameState.difficulty].player++;
+                    gameState.gameOver = true;
+                    gameState.isGameActive = false;
+                } else if (result.isTie) {
+                    showGameOver('Empate!');
+                    gameState.scores[gameState.difficulty].ties++;
+                    gameState.gameOver = true;
+                    gameState.isGameActive = false;
+                } else {
+                    gameState.currentPlayer = gameState.aiSymbol;
+                    setTimeout(aiMove, 500);
+                }
+                updateBoard();
+                updateScores();
             }
-            updateBoard();
-            updateScores();
         }
     }
 
     function aiMove() {
-        if (gameState.gameOver) return;
+        if (gameState.gameOver || !gameState.isGameActive) return;
 
         let move;
         if (gameState.difficulty === 'easy') {
@@ -699,10 +717,12 @@
                 showGameOver('IA venceu!');
                 gameState.scores[gameState.difficulty].ai++;
                 gameState.gameOver = true;
+                gameState.isGameActive = false;
             } else if (result.isTie) {
                 showGameOver('Empate!');
                 gameState.scores[gameState.difficulty].ties++;
                 gameState.gameOver = true;
+                gameState.isGameActive = false;
             } else {
                 gameState.currentPlayer = gameState.playerSymbol;
             }
@@ -741,21 +761,23 @@
 
     function resetGame() {
         gameState.board = Array(9).fill(null);
-        if (!gameState.isOnline && !gameState.isLocal) {
-            gameState.currentPlayer = Math.random() < 0.5 ? gameState.playerSymbol : gameState.aiSymbol;
-        } else if (gameState.isLocal) {
-            gameState.currentPlayer = Math.random() < 0.5 ? gameState.playerSymbol : gameState.aiSymbol;
-        }
         gameState.gameOver = false;
-        hideGameOver();
+        gameState.isGameActive = true;
+
         if (gameState.isOnline && gameState.roomId) {
             socket.emit('resetGame', gameState.roomId);
+        } else if (gameState.isLocal) {
+            gameState.currentPlayer = Math.random() < 0.5 ? gameState.playerSymbol : gameState.aiSymbol;
+        } else if (gameState.difficulty) {
+            gameState.currentPlayer = Math.random() < 0.5 ? gameState.playerSymbol : gameState.aiSymbol;
+            if (gameState.currentPlayer === gameState.aiSymbol) {
+                setTimeout(aiMove, 500);
+            }
         }
+
+        hideGameOver();
         updateBoard();
         updateScores();
-        if (!gameState.isOnline && !gameState.isLocal && gameState.currentPlayer === gameState.aiSymbol) {
-            setTimeout(aiMove, 500);
-        }
     }
 
     function saveGame() {
@@ -797,6 +819,7 @@
         gameState.roomId = null;
         gameState.currentPlayer = Math.random() < 0.5 ? gameState.playerSymbol : gameState.aiSymbol;
         gameState.gameOver = false;
+        gameState.isGameActive = true;
         gameState.board = Array(9).fill(null);
         hideGameOver();
         updateBoard();
@@ -823,7 +846,9 @@
     function startLocalGame() {
         gameState.isOnline = false;
         gameState.isLocal = true;
+        gameState.difficulty = null;
         gameState.roomId = null;
+        gameState.isGameActive = true;
         resetGame();
         closeModal('localModal');
     }
@@ -833,9 +858,11 @@
         socket.emit('createRoom', roomId);
         gameState.isOnline = true;
         gameState.isLocal = false;
+        gameState.difficulty = null;
         gameState.roomId = roomId;
         gameState.board = Array(9).fill(null);
         gameState.gameOver = false;
+        gameState.isGameActive = false; // Só ativa quando o segundo jogador entrar
         document.getElementById('roomIdDisplay').innerText = `ID da Sala: ${roomId} (Copie e envie ao seu amigo)`;
         document.getElementById('status').textContent = `Aguardando segundo jogador na sala ${roomId}...`;
         document.getElementById('chatButton').style.display = 'block';
@@ -853,7 +880,9 @@
         gameState.gameOver = false;
         gameState.isOnline = true;
         gameState.isLocal = false;
+        gameState.difficulty = null;
         gameState.roomId = roomId;
+        gameState.isGameActive = false; // Será ativado no evento playerJoined
         socket.emit('joinRoom', roomId);
         document.getElementById('status').textContent = `Conectando à sala ${roomId}...`;
         document.getElementById('chatButton').style.display = 'block';
@@ -910,6 +939,7 @@
         gameState.currentPlayer = data.firstPlayer;
         gameState.board = Array(9).fill(null);
         gameState.gameOver = false;
+        gameState.isGameActive = false; // Ainda esperando o segundo jogador
         updateBoard();
     });
 
@@ -920,13 +950,14 @@
         gameState.currentPlayer = data.firstPlayer;
         gameState.board = Array(9).fill(null);
         gameState.gameOver = false;
+        gameState.isGameActive = true; // Jogo agora está ativo
         updateBoard();
     });
 
     socket.on('gameState', (state) => {
         console.log('Estado do jogo atualizado:', state);
         gameState.board = state.board;
-        gameState.currentPlayer = state.currentPlayer; // Sempre atualizar o currentPlayer do servidor
+        gameState.currentPlayer = state.currentPlayer;
         gameState.gameOver = state.gameOver;
         updateBoard();
         if (!gameState.gameOver) {
@@ -945,6 +976,7 @@
             gameState.scores.online.ties++;
         }
         gameState.gameOver = true;
+        gameState.isGameActive = false;
         updateScores();
     });
 
@@ -953,6 +985,7 @@
         gameState.board = Array(9).fill(null);
         gameState.currentPlayer = data.firstPlayer;
         gameState.gameOver = false;
+        gameState.isGameActive = true;
         hideGameOver();
         updateBoard();
     });
@@ -976,9 +1009,11 @@
         console.error('Erro recebido:', message);
         alert(message);
         gameState.isOnline = false;
+        gameState.isLocal = false;
         gameState.roomId = null;
         gameState.playerSymbol = '❌';
         gameState.aiSymbol = '⭕';
+        gameState.isGameActive = false;
         document.getElementById('roomIdDisplay').innerText = '';
         document.getElementById('chatButton').style.display = 'none';
         document.getElementById('chatContainer').style.display = 'none';
@@ -991,9 +1026,11 @@
         if (gameState.isOnline) {
             alert('Desconectado do servidor. Verifique sua conexão.');
             gameState.isOnline = false;
+            gameState.isLocal = false;
             gameState.roomId = null;
             gameState.playerSymbol = '❌';
             gameState.aiSymbol = '⭕';
+            gameState.isGameActive = false;
             document.getElementById('roomIdDisplay').innerText = '';
             document.getElementById('chatButton').style.display = 'none';
             document.getElementById('chatContainer').style.display = 'none';
@@ -1004,6 +1041,6 @@
 
     updateBoard();
     updateScores();
-  </script>
+                                        </script>
 </body>
 </html>
