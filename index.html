@@ -25,7 +25,7 @@
             body {
                 color: #fff;
             }
-            .container, #status, #scores, .modal-content, .game-over-content {
+            .container, #status, #scores, .modal-content, .game-over-content, .chat-container {
                 background: rgba(0, 0, 0, 0.2);
             }
             .cell {
@@ -44,7 +44,7 @@
             .sidebar a:hover {
                 background: #2a3d50;
             }
-            .score-card {
+            .score-card, .chat-message {
                 background: linear-gradient(45deg, #2a609f, #6a0fbd);
                 color: #ddd;
             }
@@ -53,7 +53,7 @@
             body {
                 color: #000;
             }
-            .container, #status, #scores, .modal-content, .game-over-content {
+            .container, #status, #scores, .modal-content, .game-over-content, .chat-container {
                 background: rgba(255, 255, 255, 0.3);
             }
             .cell {
@@ -72,7 +72,7 @@
             .sidebar a:hover {
                 background: #d0d0d0;
             }
-            .score-card {
+            .score-card, .chat-message {
                 background: linear-gradient(45deg, #4a90e2, #9013fe);
                 color: #fff;
             }
@@ -290,6 +290,40 @@
             transform: scale(1.05);
             background: #a777e3;
         }
+        .chat-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            max-height: 200px;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            overflow-y: auto;
+            display: none;
+        }
+        .chat-message {
+            padding: 5px;
+            margin: 5px 0;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+        .chat-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background: #6e8efb;
+            color: #fff;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+        }
+        .chat-button:hover {
+            transform: scale(1.05);
+            background: #a777e3;
+        }
         @media (max-width: 600px) {
             .board {
                 grid-template-columns: repeat(3, 80px);
@@ -305,9 +339,13 @@
             .container {
                 padding: 15px;
             }
-            .score-card {
+            .score-card, .chat-message {
                 font-size: 0.9em;
                 padding: 8px;
+            }
+            .chat-container {
+                width: 250px;
+                max-height: 150px;
             }
         }
     </style>
@@ -326,7 +364,7 @@
 
     <div class="container">
         <h1>Jogo da Velha</h1>
-        <div id="status">Aguardando conexão...</div>
+        <div id="status">Escolha um modo de jogo...</div>
         <div id="scores"></div>
         <div class="board" id="board">
             <div class="cell" data-index="0"></div>
@@ -346,6 +384,9 @@
             </div>
         </div>
     </div>
+
+    <button class="chat-button" id="chatButton" style="display: none;" onclick="openModal('chatModal')">Chat</button>
+    <div class="chat-container" id="chatContainer"></div>
 
     <!-- Modals -->
     <div class="modal" id="saveModal">
@@ -407,8 +448,22 @@
             <span class="close">×</span>
             <h2>Pontuações</h2>
             <div id="scoresDisplay"></div>
+            <h3>Conquistas Desbloqueadas</h3>
+            <div id="achievementsDisplay"></div>
         </div>
     </div>
+    <div class="modal" id="chatModal">
+        <div class="modal-content">
+            <span class="close">×</span>
+            <h2>Enviar Mensagem</h2>
+            <select id="chatMessageSelect"></select>
+            <button onclick="sendChatMessage()">Enviar</button>
+        </div>
+    </div>
+
+    <!-- Carregar arquivos externos -->
+    <script src="rewards.js"></script>
+    <script src="chatOptions.js"></script>
 
     <script>
         const socket = io('https://jdv-vol1.onrender.com', { 
@@ -433,8 +488,21 @@
                 hard: { player: 0, ai: 0, ties: 0 },
                 online: { wins: 0, losses: 0, ties: 0 },
                 local: { player1: 0, player2: 0, ties: 0 }
-            }
+            },
+            achievements: {
+                hardWins: 0,
+                onlineWins: 0,
+                totalGames: 0
+            },
+            unlockedRewards: [],
+            consecutiveOnlineWins: 0
         };
+
+        // Carregar recompensas e opções de chat
+        const rewards = REWARDS; // Carregado de rewards.js
+        const chatWords = CHAT_WORDS; // Carregado de chatOptions.js
+        const chatEmojis = CHAT_EMOJIS; // Carregado de chatOptions.js
+        const chatOptions = [...chatWords, ...chatEmojis];
 
         // Inicializar eventos
         try {
@@ -467,6 +535,15 @@
                 closeBtn.addEventListener('click', () => {
                     closeBtn.closest('.modal').style.display = 'none';
                 });
+            });
+
+            // Inicializar chat
+            const chatSelect = document.getElementById('chatMessageSelect');
+            chatOptions.forEach(option => {
+                const opt = document.createElement('option');
+                opt.value = option;
+                opt.textContent = option;
+                chatSelect.appendChild(opt);
             });
         } catch (error) {
             // Erro silenciado
@@ -523,6 +600,40 @@
             `;
             document.getElementById('scores').innerHTML = html;
             document.getElementById('scoresDisplay').innerHTML = html;
+
+            // Atualizar conquistas
+            const achievementsHtml = gameState.unlockedRewards.map(rewardId => {
+                const reward = rewards.find(r => r.id === rewardId);
+                return `<div class="score-card">${reward.name}: ${reward.description}</div>`;
+            }).join('');
+            document.getElementById('achievementsDisplay').innerHTML = achievementsHtml || '<p>Nenhuma conquista desbloqueada.</p>';
+        }
+
+        function checkAchievements() {
+            rewards.forEach(reward => {
+                if (!gameState.unlockedRewards.includes(reward.id)) {
+                    let unlocked = false;
+                    switch (reward.id) {
+                        case 'hard_winner':
+                            if (gameState.achievements.hardWins >= 5) unlocked = true;
+                            break;
+                        case 'online_champion':
+                            if (gameState.achievements.onlineWins >= 3) unlocked = true;
+                            break;
+                        case 'marathon':
+                            if (gameState.achievements.totalGames >= 10) unlocked = true;
+                            break;
+                        case 'emoji_pack_1':
+                            if (gameState.consecutiveOnlineWins >= 3) unlocked = true;
+                            break;
+                    }
+                    if (unlocked) {
+                        gameState.unlockedRewards.push(reward.id);
+                        alert(`Conquista desbloqueada: ${reward.name}! ${reward.description}`);
+                    }
+                }
+            });
+            updateScores();
         }
 
         function checkWinner(board) {
@@ -564,6 +675,8 @@
                 } else {
                     gameState.currentPlayer = gameState.currentPlayer === gameState.playerSymbol ? gameState.aiSymbol : gameState.playerSymbol;
                 }
+                gameState.achievements.totalGames++;
+                checkAchievements();
                 updateBoard();
                 updateScores();
                 return;
@@ -575,6 +688,7 @@
                 if (result.winner) {
                     showGameOver('Você venceu!');
                     gameState.scores[gameState.difficulty].player++;
+                    if (gameState.difficulty === 'hard') gameState.achievements.hardWins++;
                     gameState.gameOver = true;
                 } else if (result.isTie) {
                     showGameOver('Empate!');
@@ -584,6 +698,8 @@
                     gameState.currentPlayer = gameState.aiSymbol;
                     setTimeout(aiMove, 500);
                 }
+                gameState.achievements.totalGames++;
+                checkAchievements();
                 updateBoard();
                 updateScores();
             }
@@ -615,6 +731,8 @@
                 } else {
                     gameState.currentPlayer = gameState.playerSymbol;
                 }
+                gameState.achievements.totalGames++;
+                checkAchievements();
                 updateBoard();
                 updateScores();
             }
@@ -668,7 +786,7 @@
         }
 
         function saveGame() {
-            const data = JSON.stringify(gameState.scores);
+            const data = JSON.stringify({ scores: gameState.scores, achievements: gameState.achievements, unlockedRewards: gameState.unlockedRewards });
             const blob = new Blob([data], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -688,7 +806,10 @@
             const reader = new FileReader();
             reader.onload = function (e) {
                 try {
-                    gameState.scores = JSON.parse(e.target.result);
+                    const data = JSON.parse(e.target.result);
+                    gameState.scores = data.scores;
+                    gameState.achievements = data.achievements || gameState.achievements;
+                    gameState.unlockedRewards = data.unlockedRewards || [];
                     updateScores();
                     closeModal('restoreModal');
                 } catch {
@@ -746,6 +867,8 @@
             gameState.gameOver = false;
             document.getElementById('roomIdDisplay').innerText = `ID da Sala: ${roomId} (Copie e envie ao seu amigo)`;
             document.getElementById('status').textContent = `Aguardando segundo jogador na sala ${roomId}...`;
+            document.getElementById('chatButton').style.display = 'block';
+            document.getElementById('chatContainer').style.display = 'block';
             closeModal('onlineModal');
         }
 
@@ -762,7 +885,17 @@
             gameState.roomId = roomId;
             socket.emit('joinRoom', roomId);
             document.getElementById('status').textContent = `Conectando à sala ${roomId}...`;
+            document.getElementById('chatButton').style.display = 'block';
+            document.getElementById('chatContainer').style.display = 'block';
             closeModal('onlineModal');
+        }
+
+        function sendChatMessage() {
+            const message = document.getElementById('chatMessageSelect').value;
+            if (gameState.isOnline && gameState.roomId) {
+                socket.emit('chatMessage', { roomId: gameState.roomId, message });
+            }
+            closeModal('chatModal');
         }
 
         // Socket.IO Events
@@ -808,11 +941,20 @@
                 const isWinner = result.winner === gameState.playerSymbol;
                 showGameOver(isWinner ? 'Você venceu!' : 'Você perdeu!');
                 gameState.scores.online[isWinner ? 'wins' : 'losses']++;
+                if (isWinner) {
+                    gameState.achievements.onlineWins++;
+                    gameState.consecutiveOnlineWins++;
+                } else {
+                    gameState.consecutiveOnlineWins = 0;
+                }
             } else {
                 showGameOver('Empate!');
                 gameState.scores.online.ties++;
+                gameState.consecutiveOnlineWins = 0;
             }
             gameState.gameOver = true;
+            gameState.achievements.totalGames++;
+            checkAchievements();
             updateScores();
         });
 
@@ -825,6 +967,15 @@
             document.getElementById('status').textContent = `Partida reiniciada na sala ${gameState.roomId} | Sua vez: ${gameState.currentPlayer === gameState.playerSymbol ? 'Sim' : 'Não'}`;
         });
 
+        socket.on('chatMessage', (message) => {
+            const chatContainer = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'chat-message';
+            messageDiv.textContent = message;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        });
+
         socket.on('error', (message) => {
             alert(message);
             gameState.isOnline = false;
@@ -832,6 +983,9 @@
             gameState.playerSymbol = '❌';
             gameState.aiSymbol = '⭕';
             document.getElementById('roomIdDisplay').innerText = '';
+            document.getElementById('chatButton').style.display = 'none';
+            document.getElementById('chatContainer').style.display = 'none';
+            document.getElementById('chatContainer').innerHTML = '';
             updateBoard();
         });
 
@@ -843,11 +997,15 @@
                 gameState.playerSymbol = '❌';
                 gameState.aiSymbol = '⭕';
                 document.getElementById('roomIdDisplay').innerText = '';
+                document.getElementById('chatButton').style.display = 'none';
+                document.getElementById('chatContainer').style.display = 'none';
+                document.getElementById('chatContainer').innerHTML = '';
                 updateBoard();
             }
         });
 
         // Inicializar jogo
+        setDifficulty(); // Chama setDifficulty para garantir início aleatório
         updateBoard();
         updateScores();
     </script>
