@@ -343,10 +343,6 @@
                 max-height: 150px;
             }
         }
-        .achievement-modal {
-            background: linear-gradient(135deg, #ff6b6b, #feca57);
-            color: #fff;
-        }
         .chat-modal {
             background: linear-gradient(135deg, #4ecdc4, #45b7d1);
         }
@@ -365,6 +361,14 @@
         .chat-modal .insult-btn { background: #ff1744; }
         .chat-modal .emoji-btn { background: #ffca28; }
         .chat-modal button:hover { transform: scale(1.1); }
+        .chat-modal select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
@@ -376,7 +380,6 @@
         <a onclick="openModal('emojiModal')">😎 Escolher Emojis</a>
         <a onclick="openModal('onlineModal')">🌐 Modo Online</a>
         <a onclick="openModal('localModal')">🎮 Modo Local</a>
-        <a onclick="openModal('achievementsModal')">🌟 Ver Conquistas</a>
     </div>
 
     <div class="container">
@@ -467,13 +470,6 @@
             <div id="scoresDisplay"></div>
         </div>
     </div>
-    <div class="modal" id="achievementsModal">
-        <div class="modal-content achievement-modal">
-            <span class="close">×</span>
-            <h2>Conquistas Desbloqueadas</h2>
-            <div id="achievementsDisplay"></div>
-        </div>
-    </div>
     <div class="modal" id="chatModal">
         <div class="modal-content chat-modal">
             <span class="close">×</span>
@@ -483,12 +479,11 @@
                 <button class="insult-btn" onclick="filterChat('insult')">Insultos</button>
                 <button class="emoji-btn" onclick="filterChat('emoji')">Emojis</button>
             </div>
-            <select id="chatMessageSelect"></select>
+            <select id="chatMessageSelect" size="10"></select>
             <button onclick="sendChatMessage()">Enviar</button>
         </div>
     </div>
 
-    <script src="rewards.js"></script>
     <script src="chatOptions.js"></script>
 
     <script>
@@ -514,17 +509,9 @@
                 hard: { player: 0, ai: 0, ties: 0 },
                 online: { wins: 0, losses: 0, ties: 0 },
                 local: { player1: 0, player2: 0, ties: 0 }
-            },
-            achievements: {
-                hardWins: 0,
-                onlineWins: 0,
-                totalGames: 0
-            },
-            unlockedRewards: [],
-            consecutiveOnlineWins: 0
+            }
         };
 
-        const rewards = REWARDS;
         const chatWords = CHAT_WORDS;
         const chatEmojis = CHAT_EMOJIS;
         const chatOptions = [...chatWords, ...chatEmojis];
@@ -622,49 +609,6 @@
             document.getElementById('scoresDisplay').innerHTML = html;
         }
 
-        function showAchievementModal(reward) {
-            openModal('achievementsModal');
-            const achievementsDisplay = document.getElementById('achievementsDisplay');
-            achievementsDisplay.innerHTML = `<div class="score-card">Nova conquista: ${reward.name} - ${reward.description}</div>`;
-            setTimeout(() => closeModal('achievementsModal'), 3000);
-        }
-
-        function checkAchievements() {
-            rewards.forEach(reward => {
-                if (!gameState.unlockedRewards.includes(reward.id)) {
-                    let unlocked = false;
-                    switch (reward.id) {
-                        case 'hard_winner':
-                            if (gameState.achievements.hardWins >= 5) unlocked = true;
-                            break;
-                        case 'online_champion':
-                            if (gameState.achievements.onlineWins >= 3) unlocked = true;
-                            break;
-                        case 'marathon':
-                            if (gameState.achievements.totalGames >= 10) unlocked = true;
-                            break;
-                        case 'emoji_pack_1':
-                            if (gameState.consecutiveOnlineWins >= 3) unlocked = true;
-                            break;
-                    }
-                    if (unlocked) {
-                        gameState.unlockedRewards.push(reward.id);
-                        showAchievementModal(reward);
-                    }
-                }
-            });
-            updateAchievementsDisplay();
-        }
-
-        function updateAchievementsDisplay() {
-            const achievementsDisplay = document.getElementById('achievementsDisplay');
-            const html = gameState.unlockedRewards.map(rewardId => {
-                const reward = rewards.find(r => r.id === rewardId);
-                return `<div class="score-card">${reward.name}: ${reward.description}</div>`;
-            }).join('');
-            achievementsDisplay.innerHTML = html || '<p>Nenhuma conquista desbloqueada.</p>';
-        }
-
         function checkWinner(board) {
             const winPatterns = [
                 [0, 1, 2], [3, 4, 5], [6, 7, 8],
@@ -681,7 +625,7 @@
         }
 
         function handleCellClick(index) {
-            if (gameState.gameOver || gameState.board[index]) return;
+            if (gameState.gameOver || gameState.board[index] || (!gameState.isOnline && !gameState.isLocal && !gameState.difficulty)) return;
 
             if (gameState.isOnline) {
                 if (gameState.currentPlayer === gameState.playerSymbol) {
@@ -704,8 +648,6 @@
                 } else {
                     gameState.currentPlayer = gameState.currentPlayer === gameState.playerSymbol ? gameState.aiSymbol : gameState.playerSymbol;
                 }
-                gameState.achievements.totalGames++;
-                checkAchievements();
                 updateBoard();
                 updateScores();
                 return;
@@ -717,7 +659,6 @@
                 if (result.winner) {
                     showGameOver('Você venceu!');
                     gameState.scores[gameState.difficulty].player++;
-                    if (gameState.difficulty === 'hard') gameState.achievements.hardWins++;
                     gameState.gameOver = true;
                 } else if (result.isTie) {
                     showGameOver('Empate!');
@@ -727,8 +668,6 @@
                     gameState.currentPlayer = gameState.aiSymbol;
                     setTimeout(aiMove, 500);
                 }
-                gameState.achievements.totalGames++;
-                checkAchievements();
                 updateBoard();
                 updateScores();
             }
@@ -760,8 +699,6 @@
                 } else {
                     gameState.currentPlayer = gameState.playerSymbol;
                 }
-                gameState.achievements.totalGames++;
-                checkAchievements();
                 updateBoard();
                 updateScores();
             }
@@ -815,7 +752,7 @@
         }
 
         function saveGame() {
-            const data = JSON.stringify({ scores: gameState.scores, achievements: gameState.achievements, unlockedRewards: gameState.unlockedRewards });
+            const data = JSON.stringify({ scores: gameState.scores });
             const blob = new Blob([data], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -837,10 +774,7 @@
                 try {
                     const data = JSON.parse(e.target.result);
                     gameState.scores = data.scores;
-                    gameState.achievements = data.achievements || gameState.achievements;
-                    gameState.unlockedRewards = data.unlockedRewards || [];
                     updateScores();
-                    updateAchievementsDisplay();
                     closeModal('restoreModal');
                 } catch {
                     alert('Arquivo inválido!');
@@ -933,9 +867,13 @@
             chatSelect.innerHTML = '';
             let filteredOptions = [];
             if (category === 'praise') {
-                filteredOptions = chatWords.filter(w => ['Boa jogada', 'Incrível!', 'Parabéns!', 'Genial!', 'Muito bom!', 'Mestre!'].includes(w));
+                filteredOptions = chatWords.filter(word => 
+                    ['Boa jogada', 'Incrível!', 'Parabéns!', 'Genial!', 'Muito bom!', 'Mestre!', 'Você é demais!', 'Jogada perfeita', 'Você é um gênio', 'Muito bem!', 'Você é um mestre', 'Você é um pro', 'Você é top', 'Grande jogada', 'Boa!', 'Boa tentativa', 'Você é rápido', 'Você é esperto', 'Que jogada!', 'Que legal!', 'Que show', 'Que beleza', 'Que maneiro', 'Eu sabia!', 'Tô de boa', 'Tô tranquilo', 'Tô animado', 'Tô rindo', 'Tô de sacanagem', 'Que divertido'].includes(word)
+                );
             } else if (category === 'insult') {
-                filteredOptions = chatWords.filter(w => ['Péssimo', 'Fracassado', 'Burro', 'Lixo', 'Idiota', 'Noob'].includes(w));
+                filteredOptions = chatWords.filter(word => 
+                    ['Péssimo', 'Fracassado', 'Burro', 'Lixo', 'Idiota', 'Noob', 'Perdeu feio', 'Tenta de novo', 'Você trapaceou?', 'Que vergonha', 'Você é um noob', 'Que lixo', 'Patético', 'Você é fraco', 'Que bosta', 'Perdeu!', 'Seu idiota', 'Eu te odeio', 'Você é horrível', 'Que nojo', 'Você é um perdedor', 'Você é um otário', 'Você é um babaca', 'Você é um zero', 'Você é um pateta', 'Você é um lerdo', 'Você é um amador', 'Você é um covarde', 'Que sacanagem', 'Que palhaçada', 'Que droga', 'Que saco', 'Que raiva', 'Que ódio', 'Tô puto', 'Tô irritado', 'Tô furioso', 'Tô de saco cheio', 'Tô bravo', 'Tô de mal'].includes(word)
+                );
             } else if (category === 'emoji') {
                 filteredOptions = chatEmojis;
             }
@@ -989,20 +927,11 @@
                 const isWinner = result.winner === gameState.playerSymbol;
                 showGameOver(isWinner ? 'Você venceu!' : 'Você perdeu!');
                 gameState.scores.online[isWinner ? 'wins' : 'losses']++;
-                if (isWinner) {
-                    gameState.achievements.onlineWins++;
-                    gameState.consecutiveOnlineWins++;
-                } else {
-                    gameState.consecutiveOnlineWins = 0;
-                }
             } else {
                 showGameOver('Empate!');
                 gameState.scores.online.ties++;
-                gameState.consecutiveOnlineWins = 0;
             }
             gameState.gameOver = true;
-            gameState.achievements.totalGames++;
-            checkAchievements();
             updateScores();
         });
 
@@ -1053,7 +982,7 @@
             }
         });
 
-        setDifficulty();
+        // Não iniciar o jogo automaticamente
         updateBoard();
         updateScores();
     </script>
