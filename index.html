@@ -592,7 +592,7 @@
             : gameState.difficulty
             ? `Jogador atual: ${gameState.currentPlayer} (Dificuldade: ${gameState.difficulty})`
             : 'Escolha um modo de jogo...';
-        console.log(`Tabuleiro atualizado - isGameActive: ${gameState.isGameActive}, gameOver: ${gameState.gameOver}, currentPlayer: ${gameState.currentPlayer}`);
+        console.log(`Tabuleiro atualizado - isGameActive: ${gameState.isGameActive}, gameOver: ${gameState.gameOver}, currentPlayer: ${gameState.currentPlayer}, playerSymbol: ${gameState.playerSymbol}`);
     }
 
     function updateScores() {
@@ -634,13 +634,11 @@
     function handleCellClick(index) {
         console.log(`Tentativa de jogada em ${index}, currentPlayer: ${gameState.currentPlayer}, playerSymbol: ${gameState.playerSymbol}, isOnline: ${gameState.isOnline}, isGameActive: ${gameState.isGameActive}, gameOver: ${gameState.gameOver}, board[${index}]: ${gameState.board[index]}`);
 
-        // Bloqueia cliques se o jogo estiver terminado ou não ativo
         if (gameState.gameOver || !gameState.isGameActive) {
             console.log('Jogada bloqueada: Jogo terminado ou não ativo');
             return;
         }
 
-        // Modo online
         if (gameState.isOnline) {
             if (!gameState.board[index]) {
                 console.log(`Enviando jogada para o servidor: sala ${gameState.roomId}, índice ${index}, símbolo ${gameState.playerSymbol}`);
@@ -651,7 +649,6 @@
             return;
         }
 
-        // Modo local (2 jogadores)
         if (gameState.isLocal) {
             if (!gameState.board[index]) {
                 gameState.board[index] = gameState.currentPlayer;
@@ -675,7 +672,6 @@
             return;
         }
 
-        // Modo IA
         if (gameState.difficulty && gameState.currentPlayer === gameState.playerSymbol) {
             if (!gameState.board[index]) {
                 gameState.board[index] = gameState.playerSymbol;
@@ -942,6 +938,7 @@
         gameState.board = Array(9).fill(null);
         gameState.gameOver = false;
         gameState.isGameActive = false;
+        console.log(`Criador - playerSymbol: ${gameState.playerSymbol}, currentPlayer: ${gameState.currentPlayer}`);
         updateBoard();
         hideGameOver();
     });
@@ -953,7 +950,8 @@
         gameState.currentPlayer = data.firstPlayer;
         gameState.board = Array(9).fill(null);
         gameState.gameOver = false;
-        gameState.isGameActive = true; // Ativa o jogo quando o segundo jogador entra
+        gameState.isGameActive = true;
+        console.log(`Entrou - playerSymbol: ${gameState.playerSymbol}, currentPlayer: ${gameState.currentPlayer}`);
         updateBoard();
         hideGameOver();
     });
@@ -963,7 +961,8 @@
         gameState.board = state.board;
         gameState.currentPlayer = state.currentPlayer;
         gameState.gameOver = state.gameOver;
-        gameState.isGameActive = !state.gameOver; // Ativa o jogo se não estiver terminado
+        gameState.isGameActive = !state.gameOver;
+        console.log(`Após gameState - playerSymbol: ${gameState.playerSymbol}, currentPlayer: ${gameState.currentPlayer}`);
         updateBoard();
         if (!gameState.gameOver) {
             hideGameOver();
@@ -991,6 +990,7 @@
         gameState.currentPlayer = data.firstPlayer;
         gameState.gameOver = false;
         gameState.isGameActive = true;
+        console.log(`Após resetGame - playerSymbol: ${gameState.playerSymbol}, currentPlayer: ${gameState.currentPlayer}`);
         hideGameOver();
         updateBoard();
     });
