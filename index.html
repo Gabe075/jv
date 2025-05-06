@@ -25,7 +25,7 @@
             body {
                 color: #fff;
             }
-            .container, #status, #scores, .modal-content, .game-over-content, .chat-container {
+            .container, #status, .modal-content, .game-over-content, .chat-container {
                 background: rgba(0, 0, 0, 0.2);
             }
             .cell {
@@ -53,7 +53,7 @@
             body {
                 color: #000;
             }
-            .container, #status, #scores, .modal-content, .game-over-content, .chat-container {
+            .container, #status, .modal-content, .game-over-content, .chat-container {
                 background: rgba(255, 255, 255, 0.3);
             }
             .cell {
@@ -181,6 +181,7 @@
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
             transform: scale(0.7);
             animation: zoomIn 0.3s forwards;
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
         }
         @keyframes zoomIn {
             to { transform: scale(1); }
@@ -213,42 +214,47 @@
             padding: 10px;
             border-radius: 5px;
         }
-        #scores {
-            margin: 20px 0;
-            font-size: 1em;
-            padding: 15px;
+        .chat-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            max-height: 200px;
+            padding: 10px;
             border-radius: 10px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-            animation: fadeIn 0.5s ease-in;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            overflow-y: auto;
+            display: none;
         }
-        .score-section {
-            margin-bottom: 15px;
-        }
-        .score-section h3 {
-            font-size: 1.2em;
-            margin-bottom: 10px;
-            color: #ffd700;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
-        }
-        .score-card {
-            padding: 10px;
-            border-radius: 8px;
+        .chat-message {
+            padding: 5px;
             margin: 5px 0;
-            display: flex;
-            justify-content: space-between;
-            font-weight: bold;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-            transition: transform 0.2s;
+            border-radius: 5px;
+            font-size: 0.9em;
+            opacity: 1;
+            animation: fadeOut 3s forwards;
         }
-        .score-card:hover {
-            transform: translateY(-3px);
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
         }
-        input, select {
-            padding: 10px;
-            margin: 10px 0;
+        .chat-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 20px;
             border: none;
             border-radius: 5px;
-            width: 80%;
+            background: #6e8efb;
+            color: #fff;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+            display: none;
+        }
+        .chat-button:hover {
+            transform: scale(1.05);
+            background: #a777e3;
         }
         #game-over {
             display: none;
@@ -290,40 +296,6 @@
             transform: scale(1.05);
             background: #a777e3;
         }
-        .chat-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 300px;
-            max-height: 200px;
-            padding: 10px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            overflow-y: auto;
-            display: none;
-        }
-        .chat-message {
-            padding: 5px;
-            margin: 5px 0;
-            border-radius: 5px;
-            font-size: 0.9em;
-        }
-        .chat-button {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            background: #6e8efb;
-            color: #fff;
-            cursor: pointer;
-            transition: transform 0.2s, background 0.2s;
-        }
-        .chat-button:hover {
-            transform: scale(1.05);
-            background: #a777e3;
-        }
         @media (max-width: 600px) {
             .board {
                 grid-template-columns: repeat(3, 80px);
@@ -339,15 +311,33 @@
             .container {
                 padding: 15px;
             }
-            .score-card, .chat-message {
-                font-size: 0.9em;
-                padding: 8px;
-            }
             .chat-container {
                 width: 250px;
                 max-height: 150px;
             }
         }
+        .achievement-modal {
+            background: linear-gradient(135deg, #ff6b6b, #feca57);
+            color: #fff;
+        }
+        .chat-modal {
+            background: linear-gradient(135deg, #4ecdc4, #45b7d1);
+        }
+        .chat-modal .category {
+            margin: 10px 0;
+        }
+        .chat-modal button {
+            margin: 5px;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .chat-modal .praise-btn { background: #00e676; }
+        .chat-modal .insult-btn { background: #ff1744; }
+        .chat-modal .emoji-btn { background: #ffca28; }
+        .chat-modal button:hover { transform: scale(1.1); }
     </style>
 </head>
 <body>
@@ -359,13 +349,13 @@
         <a onclick="openModal('emojiModal')">😎 Escolher Emojis</a>
         <a onclick="openModal('onlineModal')">🌐 Modo Online</a>
         <a onclick="openModal('localModal')">🎮 Modo Local</a>
-        <a onclick="openModal('scoresModal')">🏆 Ver Pontuações</a>
+        <a onclick="openModal('scoresModal')">🏆 Ver Resultados</a>
+        <a onclick="openModal('achievementsModal')">🌟 Ver Conquistas</a>
     </div>
 
     <div class="container">
         <h1>Jogo da Velha</h1>
         <div id="status">Escolha um modo de jogo...</div>
-        <div id="scores"></div>
         <div class="board" id="board">
             <div class="cell" data-index="0"></div>
             <div class="cell" data-index="1"></div>
@@ -446,22 +436,31 @@
     <div class="modal" id="scoresModal">
         <div class="modal-content">
             <span class="close">×</span>
-            <h2>Pontuações</h2>
+            <h2>Resultados</h2>
             <div id="scoresDisplay"></div>
-            <h3>Conquistas Desbloqueadas</h3>
+        </div>
+    </div>
+    <div class="modal" id="achievementsModal">
+        <div class="modal-content achievement-modal">
+            <span class="close">×</span>
+            <h2>Conquistas Desbloqueadas</h2>
             <div id="achievementsDisplay"></div>
         </div>
     </div>
     <div class="modal" id="chatModal">
-        <div class="modal-content">
+        <div class="modal-content chat-modal">
             <span class="close">×</span>
             <h2>Enviar Mensagem</h2>
+            <div class="category">
+                <button class="praise-btn" onclick="filterChat('praise')">Elogios</button>
+                <button class="insult-btn" onclick="filterChat('insult')">Insultos</button>
+                <button class="emoji-btn" onclick="filterChat('emoji')">Emojis</button>
+            </div>
             <select id="chatMessageSelect"></select>
             <button onclick="sendChatMessage()">Enviar</button>
         </div>
     </div>
 
-    <!-- Carregar arquivos externos -->
     <script src="rewards.js"></script>
     <script src="chatOptions.js"></script>
 
@@ -498,13 +497,11 @@
             consecutiveOnlineWins: 0
         };
 
-        // Carregar recompensas e opções de chat
-        const rewards = REWARDS; // Carregado de rewards.js
-        const chatWords = CHAT_WORDS; // Carregado de chatOptions.js
-        const chatEmojis = CHAT_EMOJIS; // Carregado de chatOptions.js
+        const rewards = REWARDS;
+        const chatWords = CHAT_WORDS;
+        const chatEmojis = CHAT_EMOJIS;
         const chatOptions = [...chatWords, ...chatEmojis];
 
-        // Inicializar eventos
         try {
             const hamburger = document.querySelector('.hamburger');
             const sidebar = document.getElementById('sidebar');
@@ -537,7 +534,6 @@
                 });
             });
 
-            // Inicializar chat
             const chatSelect = document.getElementById('chatMessageSelect');
             chatOptions.forEach(option => {
                 const opt = document.createElement('option');
@@ -545,9 +541,7 @@
                 opt.textContent = option;
                 chatSelect.appendChild(opt);
             });
-        } catch (error) {
-            // Erro silenciado
-        }
+        } catch (error) {}
 
         function openModal(modalId) {
             document.getElementById(modalId).style.display = 'flex';
@@ -598,15 +592,14 @@
                     <div class="score-card">Jogador 1 ${scores.local.player1} | Jogador 2 ${scores.local.player2} | Empates ${scores.local.ties}</div>
                 </div>
             `;
-            document.getElementById('scores').innerHTML = html;
             document.getElementById('scoresDisplay').innerHTML = html;
+        }
 
-            // Atualizar conquistas
-            const achievementsHtml = gameState.unlockedRewards.map(rewardId => {
-                const reward = rewards.find(r => r.id === rewardId);
-                return `<div class="score-card">${reward.name}: ${reward.description}</div>`;
-            }).join('');
-            document.getElementById('achievementsDisplay').innerHTML = achievementsHtml || '<p>Nenhuma conquista desbloqueada.</p>';
+        function showAchievementModal(reward) {
+            openModal('achievementsModal');
+            const achievementsDisplay = document.getElementById('achievementsDisplay');
+            achievementsDisplay.innerHTML = `<div class="score-card">Nova conquista: ${reward.name} - ${reward.description}</div>`;
+            setTimeout(() => closeModal('achievementsModal'), 3000);
         }
 
         function checkAchievements() {
@@ -629,11 +622,20 @@
                     }
                     if (unlocked) {
                         gameState.unlockedRewards.push(reward.id);
-                        alert(`Conquista desbloqueada: ${reward.name}! ${reward.description}`);
+                        showAchievementModal(reward);
                     }
                 }
             });
-            updateScores();
+            updateAchievementsDisplay();
+        }
+
+        function updateAchievementsDisplay() {
+            const achievementsDisplay = document.getElementById('achievementsDisplay');
+            const html = gameState.unlockedRewards.map(rewardId => {
+                const reward = rewards.find(r => r.id === rewardId);
+                return `<div class="score-card">${reward.name}: ${reward.description}</div>`;
+            }).join('');
+            achievementsDisplay.innerHTML = html || '<p>Nenhuma conquista desbloqueada.</p>';
         }
 
         function checkWinner(board) {
@@ -811,6 +813,7 @@
                     gameState.achievements = data.achievements || gameState.achievements;
                     gameState.unlockedRewards = data.unlockedRewards || [];
                     updateScores();
+                    updateAchievementsDisplay();
                     closeModal('restoreModal');
                 } catch {
                     alert('Arquivo inválido!');
@@ -898,7 +901,25 @@
             closeModal('chatModal');
         }
 
-        // Socket.IO Events
+        function filterChat(category) {
+            const chatSelect = document.getElementById('chatMessageSelect');
+            chatSelect.innerHTML = '';
+            let filteredOptions = [];
+            if (category === 'praise') {
+                filteredOptions = chatWords.filter(w => ['Boa jogada', 'Incrível!', 'Parabéns!', 'Genial!', 'Muito bom!', 'Mestre!'].includes(w));
+            } else if (category === 'insult') {
+                filteredOptions = chatWords.filter(w => ['Péssimo', 'Fracassado', 'Burro', 'Lixo', 'Idiota', 'Noob'].includes(w));
+            } else if (category === 'emoji') {
+                filteredOptions = chatEmojis;
+            }
+            filteredOptions.forEach(option => {
+                const opt = document.createElement('option');
+                opt.value = option;
+                opt.textContent = option;
+                chatSelect.appendChild(opt);
+            });
+        }
+
         socket.on('connect', () => {
             document.getElementById('status').textContent = 'Conectado! Escolha um modo de jogo.';
         });
@@ -974,6 +995,7 @@
             messageDiv.textContent = message;
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
+            setTimeout(() => messageDiv.remove(), 3000);
         });
 
         socket.on('error', (message) => {
@@ -1004,8 +1026,7 @@
             }
         });
 
-        // Inicializar jogo
-        setDifficulty(); // Chama setDifficulty para garantir início aleatório
+        setDifficulty();
         updateBoard();
         updateScores();
     </script>
