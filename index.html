@@ -6,7 +6,6 @@
     <title>Jogo da Velha</title>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
-        /* Estilos base */
         * {
             margin: 0;
             padding: 0;
@@ -19,69 +18,65 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            color: #000; /* Padrão para modo claro */
+            color: #000;
             transition: color 0.3s, background 0.3s;
         }
-
-        /* Detecção de tema */
         @media (prefers-color-scheme: dark) {
             body {
-                color: #fff; /* Texto branco em modo escuro */
+                color: #fff;
             }
             .container, #status, #scores, .modal-content, .game-over-content {
-                background: rgba(0, 0, 0, 0.2); /* Ajuste de fundo para escuro */
+                background: rgba(0, 0, 0, 0.2);
             }
             .cell {
-                background: #333; /* Células escuras */
-                color: #fff; /* Texto branco nas células */
+                background: #333;
+                color: #fff;
             }
             .cell:hover {
-                background: #444; /* Hover em modo escuro */
+                background: #444;
             }
             .hamburger {
-                color: #ccc; /* Ajuste do ícone hambúrguer */
+                color: #ccc;
             }
             .sidebar {
-                background: #1a252f; /* Sidebar mais escura */
+                background: #1a252f;
             }
             .sidebar a:hover {
-                background: #2a3d50; /* Hover da sidebar em escuro */
+                background: #2a3d50;
             }
             .score-card {
-                background: linear-gradient(45deg, #2a609f, #6a0fbd); /* Ajuste de gradiente */
-                color: #ddd; /* Texto mais claro */
+                background: linear-gradient(45deg, #2a609f, #6a0fbd);
+                color: #ddd;
             }
         }
-
         @media (prefers-color-scheme: light) {
             body {
-                color: #000; /* Texto preto em modo claro */
+                color: #000;
             }
             .container, #status, #scores, .modal-content, .game-over-content {
-                background: rgba(255, 255, 255, 0.3); /* Fundo claro */
+                background: rgba(255, 255, 255, 0.3);
             }
             .cell {
-                background: #fff; /* Células claras */
-                color: #000; /* Texto preto nas células */
+                background: #fff;
+                color: #000;
             }
             .cell:hover {
-                background: #f0f0f0; /* Hover em modo claro */
+                background: #f0f0f0;
             }
             .hamburger {
-                color: #333; /* Ajuste do ícone hambúrguer */
+                color: #333;
             }
             .sidebar {
-                background: #e0e0e0; /* Sidebar clara */
+                background: #e0e0e0;
             }
             .sidebar a:hover {
-                background: #d0d0d0; /* Hover da sidebar em claro */
+                background: #d0d0d0;
             }
             .score-card {
-                background: linear-gradient(45deg, #4a90e2, #9013fe); /* Gradiente original */
-                color: #fff; /* Texto branco */
+                background: linear-gradient(45deg, #4a90e2, #9013fe);
+                color: #fff;
             }
         }
-
         .container {
             text-align: center;
             padding: 20px;
@@ -154,7 +149,7 @@
         }
         .sidebar a {
             display: block;
-            color: inherit; /* Herda a cor do body */
+            color: inherit;
             padding: 15px;
             text-decoration: none;
             font-size: 1.1em;
@@ -163,7 +158,7 @@
             transition: background 0.2s;
         }
         .sidebar a:hover {
-            background: rgba(0, 0, 0, 0.1); /* Ajuste leve */
+            background: rgba(0, 0, 0, 0.1);
         }
         .modal {
             display: none;
@@ -210,7 +205,7 @@
             right: 20px;
             font-size: 25px;
             cursor: pointer;
-            color: inherit; /* Herda a cor do body */
+            color: inherit;
         }
         #status {
             margin: 20px 0;
@@ -278,7 +273,7 @@
         }
         .game-over-content p {
             font-size: 1.5em;
-            color: inherit; /* Herda a cor do body */
+            color: inherit;
             margin-bottom: 20px;
         }
         .game-over-content button {
@@ -416,7 +411,6 @@
     </div>
 
     <script>
-        // Substitua pelo URL real do seu servidor no Render
         const socket = io('https://jdv-vol1.onrender.com', { 
             transports: ['websocket'], 
             reconnectionAttempts: 5,
@@ -656,7 +650,11 @@
 
         function resetGame() {
             gameState.board = Array(9).fill(null);
-            gameState.currentPlayer = gameState.playerSymbol;
+            if (!gameState.isOnline && !gameState.isLocal) {
+                gameState.currentPlayer = Math.random() < 0.5 ? gameState.playerSymbol : gameState.aiSymbol;
+            } else if (gameState.isLocal) {
+                gameState.currentPlayer = Math.random() < 0.5 ? gameState.playerSymbol : gameState.aiSymbol;
+            }
             gameState.gameOver = false;
             hideGameOver();
             if (gameState.isOnline && gameState.roomId) {
@@ -664,6 +662,9 @@
             }
             updateBoard();
             updateScores();
+            if (!gameState.isOnline && !gameState.isLocal && gameState.currentPlayer === gameState.aiSymbol) {
+                setTimeout(aiMove, 500);
+            }
         }
 
         function saveGame() {
@@ -702,8 +703,16 @@
             gameState.isOnline = false;
             gameState.isLocal = false;
             gameState.roomId = null;
-            resetGame();
+            gameState.currentPlayer = Math.random() < 0.5 ? gameState.playerSymbol : gameState.aiSymbol;
+            gameState.gameOver = false;
+            gameState.board = Array(9).fill(null);
+            hideGameOver();
+            updateBoard();
+            updateScores();
             closeModal('difficultyModal');
+            if (gameState.currentPlayer === gameState.aiSymbol) {
+                setTimeout(aiMove, 500);
+            }
         }
 
         function setEmojis() {
@@ -733,10 +742,7 @@
             gameState.isOnline = true;
             gameState.isLocal = false;
             gameState.roomId = roomId;
-            gameState.playerSymbol = '❌';
-            gameState.aiSymbol = '⭕';
             gameState.board = Array(9).fill(null);
-            gameState.currentPlayer = '❌';
             gameState.gameOver = false;
             document.getElementById('roomIdDisplay').innerText = `ID da Sala: ${roomId} (Copie e envie ao seu amigo)`;
             document.getElementById('status').textContent = `Aguardando segundo jogador na sala ${roomId}...`;
@@ -750,13 +756,10 @@
                 return;
             }
             gameState.board = Array(9).fill(null);
-            gameState.currentPlayer = '⭕';
             gameState.gameOver = false;
             gameState.isOnline = true;
             gameState.isLocal = false;
             gameState.roomId = roomId;
-            gameState.playerSymbol = '⭕';
-            gameState.aiSymbol = '❌';
             socket.emit('joinRoom', roomId);
             document.getElementById('status').textContent = `Conectando à sala ${roomId}...`;
             closeModal('onlineModal');
@@ -772,15 +775,19 @@
             alert('Erro de conexão: ' + error.message);
         });
 
-        socket.on('roomCreated', (roomId) => {
+        socket.on('roomCreated', (data) => {
+            gameState.playerSymbol = data.playerSymbol;
+            gameState.aiSymbol = data.aiSymbol;
+            gameState.currentPlayer = data.firstPlayer;
             gameState.board = Array(9).fill(null);
-            gameState.currentPlayer = '❌';
             updateBoard();
         });
 
-        socket.on('playerJoined', () => {
+        socket.on('playerJoined', (data) => {
+            gameState.playerSymbol = data.playerSymbol;
+            gameState.aiSymbol = data.aiSymbol;
+            gameState.currentPlayer = data.firstPlayer;
             gameState.board = Array(9).fill(null);
-            gameState.currentPlayer = '❌';
             gameState.gameOver = false;
             updateBoard();
             document.getElementById('status').textContent = `Jogador atual: ${gameState.currentPlayer} (Sala: ${gameState.roomId})`;
@@ -809,9 +816,9 @@
             updateScores();
         });
 
-        socket.on('resetGame', () => {
+        socket.on('resetGame', (data) => {
             gameState.board = Array(9).fill(null);
-            gameState.currentPlayer = '❌';
+            gameState.currentPlayer = data.firstPlayer;
             gameState.gameOver = false;
             hideGameOver();
             updateBoard();
