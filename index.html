@@ -559,6 +559,13 @@
             opt.textContent = option;
             chatSelect.appendChild(opt);
         });
+
+        // Garantir que o botão do chat tenha um z-index alto
+        const chatButton = document.getElementById('chatButton');
+        if (chatButton) {
+            chatButton.style.zIndex = '1000';
+            chatButton.style.position = 'relative';
+        }
     } catch (error) {
         console.error('Erro na inicialização:', error);
     }
@@ -575,10 +582,13 @@
     function showGameOver(message) {
         document.getElementById('game-over-message').textContent = message;
         document.getElementById('game-over').style.display = 'flex';
+        document.getElementById('game-over').style.zIndex = '500';
     }
 
     function hideGameOver() {
-        document.getElementById('game-over').style.display = 'none';
+        const gameOverModal = document.getElementById('game-over');
+        gameOverModal.style.display = 'none';
+        gameOverModal.style.zIndex = '-1'; // Garante que o modal não interfira quando escondido
     }
 
     function updateBoard() {
@@ -637,7 +647,11 @@
                 console.log(`Enviando jogada para o servidor: sala ${gameState.roomId}, índice ${index}, símbolo ${gameState.playerSymbol}`);
                 socket.emit('makeMove', { roomId: gameState.roomId, index, symbol: gameState.playerSymbol });
                 gameState.lastMoveConfirmed = false;
+                // Bloqueia apenas as células do tabuleiro
                 document.querySelectorAll('.cell').forEach(cell => cell.style.pointerEvents = 'none');
+                // Garante que o botão do chat não seja afetado
+                const chatButton = document.getElementById('chatButton');
+                if (chatButton) chatButton.style.pointerEvents = 'auto';
             } else {
                 console.log(`Jogada bloqueada: Célula ocupada, não é sua vez ou esperando confirmação`);
             }
@@ -777,6 +791,10 @@
         hideGameOver();
         updateBoard();
         updateScores();
+        // Reativa os cliques nas células e garante que o chat esteja acessível
+        document.querySelectorAll('.cell').forEach(cell => cell.style.pointerEvents = 'auto');
+        const chatButton = document.getElementById('chatButton');
+        if (chatButton) chatButton.style.pointerEvents = 'auto';
     }
 
     function saveGame() {
@@ -899,7 +917,6 @@
         if (gameState.isOnline && gameState.roomId && message) {
             console.log(`Enviando mensagem de chat: ${message} na sala ${gameState.roomId}`);
             socket.emit('chatMessage', { roomId: gameState.roomId, message });
-            // Adiciona a mensagem localmente para o remetente
             const chatContainer = document.getElementById('chatContainer');
             const messageDiv = document.createElement('div');
             messageDiv.className = 'chat-message';
@@ -973,6 +990,9 @@
         console.log(`Entrou - playerSymbol: ${gameState.playerSymbol}, currentPlayer: ${gameState.currentPlayer}`);
         updateBoard();
         hideGameOver();
+        // Garante que o chat esteja acessível
+        const chatButton = document.getElementById('chatButton');
+        if (chatButton) chatButton.style.pointerEvents = 'auto';
     });
 
     socket.on('gameState', (state) => {
@@ -983,13 +1003,14 @@
         gameState.isGameActive = !state.gameOver;
         gameState.lastMoveConfirmed = true;
         console.log(`Após gameState - playerSymbol: ${gameState.playerSymbol}, currentPlayer: ${gameState.currentPlayer}`);
-        setTimeout(() => {
-            updateBoard();
-            document.querySelectorAll('.cell').forEach(cell => cell.style.pointerEvents = 'auto');
-            if (!gameState.gameOver) {
-                hideGameOver();
-            }
-        }, 100); // Atraso para garantir sincronização
+        updateBoard();
+        document.querySelectorAll('.cell').forEach(cell => cell.style.pointerEvents = 'auto');
+        if (!gameState.gameOver) {
+            hideGameOver();
+        }
+        // Garante que o chat esteja acessível
+        const chatButton = document.getElementById('chatButton');
+        if (chatButton) chatButton.style.pointerEvents = 'auto';
     });
 
     socket.on('gameOver', (result) => {
@@ -1006,6 +1027,9 @@
         gameState.isGameActive = false;
         gameState.lastMoveConfirmed = true;
         updateScores();
+        // Garante que o chat esteja acessível mesmo após o fim do jogo
+        const chatButton = document.getElementById('chatButton');
+        if (chatButton) chatButton.style.pointerEvents = 'auto';
     });
 
     socket.on('resetGame', (data) => {
@@ -1018,6 +1042,9 @@
         console.log(`Após resetGame - playerSymbol: ${gameState.playerSymbol}, currentPlayer: ${gameState.currentPlayer}`);
         hideGameOver();
         updateBoard();
+        // Garante que o chat esteja acessível
+        const chatButton = document.getElementById('chatButton');
+        if (chatButton) chatButton.style.pointerEvents = 'auto';
     });
 
     socket.on('chatMessage', (message) => {
@@ -1032,12 +1059,13 @@
 
     socket.on('statusUpdate', (message) => {
         console.log('Status atualizado:', message);
-        setTimeout(() => {
-            document.getElementById('status').textContent = message;
-            if (gameState.isOnline && message.includes('Sua vez: Sim')) {
-                gameState.lastMoveConfirmed = true;
-            }
-        }, 100); // Atraso para garantir sincronização
+        document.getElementById('status').textContent = message;
+        if (gameState.isOnline && message.includes('Sua vez: Sim')) {
+            gameState.lastMoveConfirmed = true;
+            document.querySelectorAll('.cell').forEach(cell => cell.style.pointerEvents = 'auto');
+            const chatButton = document.getElementById('chatButton');
+            if (chatButton) chatButton.style.pointerEvents = 'auto';
+        }
     });
 
     socket.on('error', (message) => {
@@ -1078,6 +1106,6 @@
 
     updateBoard();
     updateScores();
-        </script>
+                </script>
         </body>
 </html>
