@@ -584,6 +584,7 @@
         document.querySelectorAll('.cell').forEach((cell, index) => {
             cell.textContent = gameState.board[index] || '';
         });
+        // Status atualizado apenas com base no estado do servidor
         document.getElementById('status').textContent = gameState.isOnline
             ? gameState.roomId
                 ? `Sala: ${gameState.roomId} | Sua vez: ${gameState.currentPlayer === gameState.playerSymbol ? 'Sim' : 'Não'}`
@@ -641,9 +642,12 @@
         }
 
         if (gameState.isOnline) {
+            // Só permite clique se for a vez do jogador e a célula estiver vazia
             if (!gameState.board[index] && gameState.currentPlayer === gameState.playerSymbol) {
                 console.log(`Enviando jogada para o servidor: sala ${gameState.roomId}, índice ${index}, símbolo ${gameState.playerSymbol}`);
                 socket.emit('makeMove', { roomId: gameState.roomId, index, symbol: gameState.playerSymbol });
+                // Desativa cliques temporariamente até receber a confirmação
+                document.querySelectorAll('.cell').forEach(cell => cell.style.pointerEvents = 'none');
             } else {
                 console.log(`Jogada bloqueada: Célula ocupada ou não é sua vez`);
             }
@@ -966,6 +970,8 @@
         gameState.isGameActive = !state.gameOver;
         console.log(`Após gameState - playerSymbol: ${gameState.playerSymbol}, currentPlayer: ${gameState.currentPlayer}`);
         updateBoard();
+        // Reativa cliques após receber o novo estado
+        document.querySelectorAll('.cell').forEach(cell => cell.style.pointerEvents = 'auto');
         if (!gameState.gameOver) {
             hideGameOver();
         }
@@ -1047,6 +1053,6 @@
 
     updateBoard();
     updateScores();
-    </script>
-</body>
+            </script>
+        </body>
 </html>
