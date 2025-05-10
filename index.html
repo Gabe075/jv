@@ -511,7 +511,7 @@
             online: { wins: 0, losses: 0, ties: 0 },
             local: { player1: 0, player2: 0, ties: 0 }
         },
-        lastMoveConfirmed: false // Novo estado para rastrear confirmação
+        lastMoveConfirmed: true // Estado para rastrear confirmação
     };
 
     const chatWords = CHAT_WORDS;
@@ -627,19 +627,19 @@
     function handleCellClick(index) {
         console.log(`Tentativa de jogada em ${index}, currentPlayer: ${gameState.currentPlayer}, playerSymbol: ${gameState.playerSymbol}, isOnline: ${gameState.isOnline}, isGameActive: ${gameState.isGameActive}, gameOver: ${gameState.gameOver}, board[${index}]: ${gameState.board[index]}, lastMoveConfirmed: ${gameState.lastMoveConfirmed}`);
 
-        if (gameState.gameOver || !gameState.isGameActive || (gameState.isOnline && !gameState.lastMoveConfirmed)) {
-            console.log('Jogada bloqueada: Jogo terminado, não ativo ou esperando confirmação');
+        if (gameState.gameOver || !gameState.isGameActive) {
+            console.log('Jogada bloqueada: Jogo terminado ou não ativo');
             return;
         }
 
         if (gameState.isOnline) {
-            if (!gameState.board[index] && gameState.currentPlayer === gameState.playerSymbol) {
+            if (!gameState.board[index] && gameState.currentPlayer === gameState.playerSymbol && gameState.lastMoveConfirmed) {
                 console.log(`Enviando jogada para o servidor: sala ${gameState.roomId}, índice ${index}, símbolo ${gameState.playerSymbol}`);
                 socket.emit('makeMove', { roomId: gameState.roomId, index, symbol: gameState.playerSymbol });
-                gameState.lastMoveConfirmed = false; // Marca como pendente
+                gameState.lastMoveConfirmed = false;
                 document.querySelectorAll('.cell').forEach(cell => cell.style.pointerEvents = 'none');
             } else {
-                console.log(`Jogada bloqueada: Célula ocupada ou não é sua vez`);
+                console.log(`Jogada bloqueada: Célula ocupada, não é sua vez ou esperando confirmação`);
             }
             return;
         }
@@ -759,7 +759,7 @@
         gameState.board = Array(9).fill(null);
         gameState.gameOver = false;
         gameState.isGameActive = true;
-        gameState.lastMoveConfirmed = true; // Reinicia a confirmação
+        gameState.lastMoveConfirmed = true;
 
         if (gameState.isOnline && gameState.roomId) {
             socket.emit('resetGame', gameState.roomId);
@@ -896,8 +896,18 @@
 
     function sendChatMessage() {
         const message = document.getElementById('chatMessageSelect').value;
-        if (gameState.isOnline && gameState.roomId) {
+        if (gameState.isOnline && gameState.roomId && message) {
+            console.log(`Enviando mensagem de chat: ${message} na sala ${gameState.roomId}`);
             socket.emit('chatMessage', { roomId: gameState.roomId, message });
+            // Adiciona a mensagem localmente para o remetente
+            const chatContainer = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'chat-message';
+            messageDiv.textContent = message;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        } else {
+            console.log('Erro ao enviar mensagem: Verifique se está online e na sala');
         }
         closeModal('chatModal');
     }
@@ -971,13 +981,15 @@
         gameState.currentPlayer = state.currentPlayer;
         gameState.gameOver = state.gameOver;
         gameState.isGameActive = !state.gameOver;
-        gameState.lastMoveConfirmed = true; // Marca como confirmado
+        gameState.lastMoveConfirmed = true;
         console.log(`Após gameState - playerSymbol: ${gameState.playerSymbol}, currentPlayer: ${gameState.currentPlayer}`);
-        updateBoard();
-        document.querySelectorAll('.cell').forEach(cell => cell.style.pointerEvents = 'auto');
-        if (!gameState.gameOver) {
-            hideGameOver();
-        }
+        setTimeout(() => {
+            updateBoard();
+            document.querySelectorAll('.cell').forEach(cell => cell.style.pointerEvents = 'auto');
+            if (!gameState.gameOver) {
+                hideGameOver();
+            }
+        }, 100); // Atraso para garantir sincronização
     });
 
     socket.on('gameOver', (result) => {
@@ -1009,6 +1021,7 @@
     });
 
     socket.on('chatMessage', (message) => {
+        console.log(`Mensagem recebida: ${message}`);
         const chatContainer = document.getElementById('chatContainer');
         const messageDiv = document.createElement('div');
         messageDiv.className = 'chat-message';
@@ -1019,10 +1032,12 @@
 
     socket.on('statusUpdate', (message) => {
         console.log('Status atualizado:', message);
-        document.getElementById('status').textContent = message;
-        if (gameState.isOnline && message.includes('Sua vez: Sim')) {
-            gameState.lastMoveConfirmed = true; // Apenas marca como confirmado se for "Sua vez: Sim"
-        }
+        setTimeout(() => {
+            document.getElementById('status').textContent = message;
+            if (gameState.isOnline && message.includes('Sua vez: Sim')) {
+                gameState.lastMoveConfirmed = true;
+            }
+        }, 100); // Atraso para garantir sincronização
     });
 
     socket.on('error', (message) => {
