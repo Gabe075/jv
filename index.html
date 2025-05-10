@@ -486,7 +486,7 @@
 
     <script src="chatOptions.js"></script>
 
-               <script>
+    <script>
     const socket = io('https://jdv-vol1.onrender.com', { 
         transports: ['websocket'], 
         reconnectionAttempts: 5,
@@ -510,7 +510,8 @@
             hard: { player: 0, ai: 0, ties: 0 },
             online: { wins: 0, losses: 0, ties: 0 },
             local: { player1: 0, player2: 0, ties: 0 }
-        }
+        },
+        lastMoveConfirmed: false // Novo estado para rastrear confirmação
     };
 
     const chatWords = CHAT_WORDS;
@@ -584,8 +585,7 @@
         document.querySelectorAll('.cell').forEach((cell, index) => {
             cell.textContent = gameState.board[index] || '';
         });
-        // Status será atualizado apenas via evento statusUpdate do servidor
-        console.log(`Tabuleiro atualizado - isGameActive: ${gameState.isGameActive}, gameOver: ${gameState.gameOver}, currentPlayer: ${gameState.currentPlayer}, playerSymbol: ${gameState.playerSymbol}`);
+        console.log(`Tabuleiro atualizado - isGameActive: ${gameState.isGameActive}, gameOver: ${gameState.gameOver}, currentPlayer: ${gameState.currentPlayer}, playerSymbol: ${gameState.playerSymbol}, lastMoveConfirmed: ${gameState.lastMoveConfirmed}`);
     }
 
     function updateScores() {
@@ -625,10 +625,10 @@
     }
 
     function handleCellClick(index) {
-        console.log(`Tentativa de jogada em ${index}, currentPlayer: ${gameState.currentPlayer}, playerSymbol: ${gameState.playerSymbol}, isOnline: ${gameState.isOnline}, isGameActive: ${gameState.isGameActive}, gameOver: ${gameState.gameOver}, board[${index}]: ${gameState.board[index]}`);
+        console.log(`Tentativa de jogada em ${index}, currentPlayer: ${gameState.currentPlayer}, playerSymbol: ${gameState.playerSymbol}, isOnline: ${gameState.isOnline}, isGameActive: ${gameState.isGameActive}, gameOver: ${gameState.gameOver}, board[${index}]: ${gameState.board[index]}, lastMoveConfirmed: ${gameState.lastMoveConfirmed}`);
 
-        if (gameState.gameOver || !gameState.isGameActive) {
-            console.log('Jogada bloqueada: Jogo terminado ou não ativo');
+        if (gameState.gameOver || !gameState.isGameActive || (gameState.isOnline && !gameState.lastMoveConfirmed)) {
+            console.log('Jogada bloqueada: Jogo terminado, não ativo ou esperando confirmação');
             return;
         }
 
@@ -636,6 +636,7 @@
             if (!gameState.board[index] && gameState.currentPlayer === gameState.playerSymbol) {
                 console.log(`Enviando jogada para o servidor: sala ${gameState.roomId}, índice ${index}, símbolo ${gameState.playerSymbol}`);
                 socket.emit('makeMove', { roomId: gameState.roomId, index, symbol: gameState.playerSymbol });
+                gameState.lastMoveConfirmed = false; // Marca como pendente
                 document.querySelectorAll('.cell').forEach(cell => cell.style.pointerEvents = 'none');
             } else {
                 console.log(`Jogada bloqueada: Célula ocupada ou não é sua vez`);
@@ -758,6 +759,7 @@
         gameState.board = Array(9).fill(null);
         gameState.gameOver = false;
         gameState.isGameActive = true;
+        gameState.lastMoveConfirmed = true; // Reinicia a confirmação
 
         if (gameState.isOnline && gameState.roomId) {
             socket.emit('resetGame', gameState.roomId);
@@ -817,6 +819,7 @@
         gameState.currentPlayer = Math.random() < 0.5 ? gameState.playerSymbol : gameState.aiSymbol;
         gameState.gameOver = false;
         gameState.isGameActive = true;
+        gameState.lastMoveConfirmed = true;
         gameState.board = Array(9).fill(null);
         hideGameOver();
         document.getElementById('status').textContent = `Jogador atual: ${gameState.currentPlayer} (Dificuldade: ${gameState.difficulty})`;
@@ -847,6 +850,7 @@
         gameState.difficulty = null;
         gameState.roomId = null;
         gameState.isGameActive = true;
+        gameState.lastMoveConfirmed = true;
         resetGame();
         closeModal('localModal');
     }
@@ -861,6 +865,7 @@
         gameState.board = Array(9).fill(null);
         gameState.gameOver = false;
         gameState.isGameActive = false;
+        gameState.lastMoveConfirmed = true;
         document.getElementById('roomIdDisplay').innerText = `ID da Sala: ${roomId} (Copie e envie ao seu amigo)`;
         document.getElementById('status').textContent = `Aguardando segundo jogador na sala ${roomId}...`;
         document.getElementById('chatButton').style.display = 'block';
@@ -881,6 +886,7 @@
         gameState.difficulty = null;
         gameState.roomId = roomId;
         gameState.isGameActive = false;
+        gameState.lastMoveConfirmed = true;
         socket.emit('joinRoom', roomId);
         document.getElementById('status').textContent = `Conectando à sala ${roomId}...`;
         document.getElementById('chatButton').style.display = 'block';
@@ -939,6 +945,7 @@
         gameState.board = Array(9).fill(null);
         gameState.gameOver = false;
         gameState.isGameActive = false;
+        gameState.lastMoveConfirmed = true;
         console.log(`Criador - playerSymbol: ${gameState.playerSymbol}, currentPlayer: ${gameState.currentPlayer}`);
         updateBoard();
         hideGameOver();
@@ -952,6 +959,7 @@
         gameState.board = Array(9).fill(null);
         gameState.gameOver = false;
         gameState.isGameActive = true;
+        gameState.lastMoveConfirmed = true;
         console.log(`Entrou - playerSymbol: ${gameState.playerSymbol}, currentPlayer: ${gameState.currentPlayer}`);
         updateBoard();
         hideGameOver();
@@ -963,6 +971,7 @@
         gameState.currentPlayer = state.currentPlayer;
         gameState.gameOver = state.gameOver;
         gameState.isGameActive = !state.gameOver;
+        gameState.lastMoveConfirmed = true; // Marca como confirmado
         console.log(`Após gameState - playerSymbol: ${gameState.playerSymbol}, currentPlayer: ${gameState.currentPlayer}`);
         updateBoard();
         document.querySelectorAll('.cell').forEach(cell => cell.style.pointerEvents = 'auto');
@@ -983,6 +992,7 @@
         }
         gameState.gameOver = true;
         gameState.isGameActive = false;
+        gameState.lastMoveConfirmed = true;
         updateScores();
     });
 
@@ -992,6 +1002,7 @@
         gameState.currentPlayer = data.firstPlayer;
         gameState.gameOver = false;
         gameState.isGameActive = true;
+        gameState.lastMoveConfirmed = true;
         console.log(`Após resetGame - playerSymbol: ${gameState.playerSymbol}, currentPlayer: ${gameState.currentPlayer}`);
         hideGameOver();
         updateBoard();
@@ -1009,6 +1020,9 @@
     socket.on('statusUpdate', (message) => {
         console.log('Status atualizado:', message);
         document.getElementById('status').textContent = message;
+        if (gameState.isOnline && message.includes('Sua vez: Sim')) {
+            gameState.lastMoveConfirmed = true; // Apenas marca como confirmado se for "Sua vez: Sim"
+        }
     });
 
     socket.on('error', (message) => {
@@ -1020,6 +1034,7 @@
         gameState.playerSymbol = '❌';
         gameState.aiSymbol = '⭕';
         gameState.isGameActive = false;
+        gameState.lastMoveConfirmed = true;
         document.getElementById('roomIdDisplay').innerText = '';
         document.getElementById('chatButton').style.display = 'none';
         document.getElementById('chatContainer').style.display = 'none';
@@ -1037,6 +1052,7 @@
             gameState.playerSymbol = '❌';
             gameState.aiSymbol = '⭕';
             gameState.isGameActive = false;
+            gameState.lastMoveConfirmed = true;
             document.getElementById('roomIdDisplay').innerText = '';
             document.getElementById('chatButton').style.display = 'none';
             document.getElementById('chatContainer').style.display = 'none';
@@ -1047,6 +1063,6 @@
 
     updateBoard();
     updateScores();
-</script>
+        </script>
         </body>
 </html>
