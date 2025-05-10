@@ -486,7 +486,7 @@
 
     <script src="chatOptions.js"></script>
 
-    <script>
+               <script>
     const socket = io('https://jdv-vol1.onrender.com', { 
         transports: ['websocket'], 
         reconnectionAttempts: 5,
@@ -584,16 +584,7 @@
         document.querySelectorAll('.cell').forEach((cell, index) => {
             cell.textContent = gameState.board[index] || '';
         });
-        // Status atualizado apenas com base no estado do servidor
-        document.getElementById('status').textContent = gameState.isOnline
-            ? gameState.roomId
-                ? `Sala: ${gameState.roomId} | Sua vez: ${gameState.currentPlayer === gameState.playerSymbol ? 'Sim' : 'Não'}`
-                : 'Aguardando conexão...'
-            : gameState.isLocal
-            ? `Jogador atual: ${gameState.currentPlayer === gameState.playerSymbol ? 'Jogador 1' : 'Jogador 2'}`
-            : gameState.difficulty
-            ? `Jogador atual: ${gameState.currentPlayer} (Dificuldade: ${gameState.difficulty})`
-            : 'Escolha um modo de jogo...';
+        // Status será atualizado apenas via evento statusUpdate do servidor
         console.log(`Tabuleiro atualizado - isGameActive: ${gameState.isGameActive}, gameOver: ${gameState.gameOver}, currentPlayer: ${gameState.currentPlayer}, playerSymbol: ${gameState.playerSymbol}`);
     }
 
@@ -642,11 +633,9 @@
         }
 
         if (gameState.isOnline) {
-            // Só permite clique se for a vez do jogador e a célula estiver vazia
             if (!gameState.board[index] && gameState.currentPlayer === gameState.playerSymbol) {
                 console.log(`Enviando jogada para o servidor: sala ${gameState.roomId}, índice ${index}, símbolo ${gameState.playerSymbol}`);
                 socket.emit('makeMove', { roomId: gameState.roomId, index, symbol: gameState.playerSymbol });
-                // Desativa cliques temporariamente até receber a confirmação
                 document.querySelectorAll('.cell').forEach(cell => cell.style.pointerEvents = 'none');
             } else {
                 console.log(`Jogada bloqueada: Célula ocupada ou não é sua vez`);
@@ -671,6 +660,7 @@
                 } else {
                     gameState.currentPlayer = gameState.currentPlayer === gameState.playerSymbol ? gameState.aiSymbol : gameState.playerSymbol;
                 }
+                document.getElementById('status').textContent = `Jogador atual: ${gameState.currentPlayer === gameState.playerSymbol ? 'Jogador 1' : 'Jogador 2'}`;
                 updateBoard();
                 updateScores();
             }
@@ -695,6 +685,7 @@
                     gameState.currentPlayer = gameState.aiSymbol;
                     setTimeout(aiMove, 500);
                 }
+                document.getElementById('status').textContent = `Jogador atual: ${gameState.currentPlayer} (Dificuldade: ${gameState.difficulty})`;
                 updateBoard();
                 updateScores();
             }
@@ -729,6 +720,7 @@
             } else {
                 gameState.currentPlayer = gameState.playerSymbol;
             }
+            document.getElementById('status').textContent = `Jogador atual: ${gameState.currentPlayer} (Dificuldade: ${gameState.difficulty})`;
             updateBoard();
             updateScores();
         }
@@ -771,8 +763,10 @@
             socket.emit('resetGame', gameState.roomId);
         } else if (gameState.isLocal) {
             gameState.currentPlayer = Math.random() < 0.5 ? gameState.playerSymbol : gameState.aiSymbol;
+            document.getElementById('status').textContent = `Jogador atual: ${gameState.currentPlayer === gameState.playerSymbol ? 'Jogador 1' : 'Jogador 2'}`;
         } else if (gameState.difficulty) {
             gameState.currentPlayer = Math.random() < 0.5 ? gameState.playerSymbol : gameState.aiSymbol;
+            document.getElementById('status').textContent = `Jogador atual: ${gameState.currentPlayer} (Dificuldade: ${gameState.difficulty})`;
             if (gameState.currentPlayer === gameState.aiSymbol) {
                 setTimeout(aiMove, 500);
             }
@@ -825,6 +819,7 @@
         gameState.isGameActive = true;
         gameState.board = Array(9).fill(null);
         hideGameOver();
+        document.getElementById('status').textContent = `Jogador atual: ${gameState.currentPlayer} (Dificuldade: ${gameState.difficulty})`;
         updateBoard();
         updateScores();
         closeModal('difficultyModal');
@@ -970,7 +965,6 @@
         gameState.isGameActive = !state.gameOver;
         console.log(`Após gameState - playerSymbol: ${gameState.playerSymbol}, currentPlayer: ${gameState.currentPlayer}`);
         updateBoard();
-        // Reativa cliques após receber o novo estado
         document.querySelectorAll('.cell').forEach(cell => cell.style.pointerEvents = 'auto');
         if (!gameState.gameOver) {
             hideGameOver();
@@ -1053,6 +1047,6 @@
 
     updateBoard();
     updateScores();
-            </script>
+</script>
         </body>
 </html>
